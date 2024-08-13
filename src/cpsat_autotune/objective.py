@@ -5,12 +5,13 @@ from .parameter_space import CpSatParameterSpace
 import optuna
 import numpy as np
 
+
 def confidence_intervals_do_not_overlap(list1, list2, confidence=0.95):
     def calculate_confidence_interval(data, confidence):
         n = len(data)
         mean = np.mean(data)
         sem = stats.sem(data)  # Standard error of the mean
-        margin_of_error = sem * stats.t.ppf((1 + confidence) / 2., n-1)
+        margin_of_error = sem * stats.t.ppf((1 + confidence) / 2.0, n - 1)
         return mean, mean - margin_of_error, mean + margin_of_error
 
     # Calculate confidence intervals
@@ -25,7 +26,13 @@ def confidence_intervals_do_not_overlap(list1, list2, confidence=0.95):
 
 
 class Objective:
-    def __init__(self, model: cp_model.CpModel, parameter_space: CpSatParameterSpace, direction: str = "maximize", obj_for_timeout: int = 0):
+    def __init__(
+        self,
+        model: cp_model.CpModel,
+        parameter_space: CpSatParameterSpace,
+        direction: str = "maximize",
+        obj_for_timeout: int = 0,
+    ):
         if direction not in ("maximize", "minimize"):
             raise ValueError("Direction must be 'maximize' or 'minimize'")
         self.maximization = direction == "maximize"
@@ -53,8 +60,8 @@ class Objective:
             self._baseline = values
             print("Baseline:", values)
         return self._baseline
-        
-    def _get_key_from_trial(self, trial: optuna.Trial|optuna.trial.FixedTrial):
+
+    def _get_key_from_trial(self, trial: optuna.Trial | optuna.trial.FixedTrial):
         return frozenset(self.parameter_space.get_cpsat_params_diff(trial).items())
 
     def __call__(self, trial: optuna.Trial):
@@ -64,7 +71,9 @@ class Objective:
         param_key = self._get_key_from_trial(trial)
         n_trials = self.n_trials
         if param_key in self._samples:
-            n_trials = min(self.max_trials -len(self._samples[param_key]), self.n_trials)
+            n_trials = min(
+                self.max_trials - len(self._samples[param_key]), self.n_trials
+            )
             n_trials = max(n_trials, 0)
         for _ in range(n_trials):
             value = self._solve(solver)
@@ -72,17 +81,25 @@ class Objective:
             if value < prune_if_below:
                 raise optuna.TrialPruned()
         return float(np.mean(self._samples[param_key]))
-    
-    def evaluate_trial(self, trial: optuna.Trial|optuna.trial.FixedTrial):
+
+    def evaluate_trial(self, trial: optuna.Trial | optuna.trial.FixedTrial):
         key = self._get_key_from_trial(trial)
         values = self._samples[key]
         baseline = self._samples[frozenset()]
         # test significance
-        return np.mean(values)-np.mean(baseline), confidence_intervals_do_not_overlap(values, baseline)
-    
+        return np.mean(values) - np.mean(baseline), confidence_intervals_do_not_overlap(
+            values, baseline
+        )
+
     def best_params(self, max_changes: int = -1):
-        keys_to_consider = [key for key in self._samples if max_changes<0 or len(key) <= max_changes]
+        keys_to_consider = [
+            key for key in self._samples if max_changes < 0 or len(key) <= max_changes
+        ]
         best_key = max(keys_to_consider, key=lambda x: np.mean(self._samples[x]))
         values = self._samples[best_key]
         baseline = self._samples[frozenset()]
-        return best_key, np.mean(values)-np.mean(baseline), confidence_intervals_do_not_overlap(values, baseline)
+        return (
+            best_key,
+            np.mean(values) - np.mean(baseline),
+            confidence_intervals_do_not_overlap(values, baseline),
+        )
