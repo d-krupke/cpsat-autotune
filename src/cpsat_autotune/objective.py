@@ -67,7 +67,7 @@ class Objective:
     def __call__(self, trial: optuna.Trial):
         solver = self.parameter_space.sample(trial)
         baseline = self.compute_baseline()
-        prune_if_below = min(baseline) - (max(baseline) - min(baseline))
+        prune_if_below = min(baseline) - 0.1*(max(baseline) - min(baseline))
         param_key = self._get_key_from_trial(trial)
         n_trials = self.n_trials
         if param_key in self._samples:

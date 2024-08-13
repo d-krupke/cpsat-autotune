@@ -1,4 +1,4 @@
-# autotune-CP-SAT: A tool to tune the hyper-parameters of Google OR-Tools' CP-SAT solver
+# cpsat-autotune: A tool to tune the hyper-parameters of Google OR-Tools' CP-SAT solver
 
 This project aims to provide a simple tool to give a suggestion on how to tune
 the hyper-parameters of the CP-SAT solver for a specific problem. CP-SAT is
