@@ -15,7 +15,7 @@ class CpSatParameter(ABC):
     allowing for seamless integration between the two frameworks.
     """
 
-    def __init__(self, name: str, default_value):
+    def __init__(self, name: str, default_value, description: str = ""):
         """
         Initialize the parameter with a name and default value.
 
@@ -25,6 +25,7 @@ class CpSatParameter(ABC):
         """
         self.name = name
         self._default_value = default_value
+        self.description = description
 
     @abstractmethod
     def sample(self, trial: optuna.Trial):
@@ -87,7 +88,7 @@ class BoolParameter(CpSatParameter):
     A CP-SAT parameter representing a boolean (True/False) value.
     """
 
-    def __init__(self, name: str, default_value: bool):
+    def __init__(self, name: str, default_value: bool, description: str = ""):
         """
         Initialize the boolean parameter with a name and default value.
 
@@ -95,7 +96,7 @@ class BoolParameter(CpSatParameter):
             name: The name of the parameter.
             default_value: The default boolean value for the parameter.
         """
-        super().__init__(name, default_value)
+        super().__init__(name, default_value, description)
 
     def sample(self, trial: optuna.Trial) -> bool:
         """
@@ -116,7 +117,7 @@ class CategoryParameter(CpSatParameter):
     The order of these values does not have semantic significance.
     """
 
-    def __init__(self, name: str, default_value, values: list):
+    def __init__(self, name: str, default_value, values: list, description: str = ""):
         """
         Initialize the categorical parameter with a name, default value, and list of possible values.
 
@@ -125,7 +126,7 @@ class CategoryParameter(CpSatParameter):
             default_value: The default value for the parameter.
             values: A list of possible values that the parameter can take.
         """
-        super().__init__(name, default_value)
+        super().__init__(name, default_value, description=description)
         self.values = values
 
     def sample(self, trial: optuna.Trial):
@@ -146,7 +147,7 @@ class IntParameter(CpSatParameter):
     A CP-SAT parameter representing an integer value, which may be sampled within a defined range.
     """
 
-    def __init__(self, name: str, default_value: int, lb: int, ub: int, log: bool):
+    def __init__(self, name: str, default_value: int, lb: int, ub: int, log: bool, description: str = ""):
         """
         Initialize the integer parameter with a name, default value, and range bounds.
 
@@ -157,7 +158,7 @@ class IntParameter(CpSatParameter):
             ub: The upper bound of the integer range.
             log: Whether to sample the value on a logarithmic scale.
         """
-        super().__init__(name, default_value)
+        super().__init__(name, default_value, description=description)
         self.lower_bound = lb
         self.upper_bound = ub
         self.log = log
@@ -183,7 +184,7 @@ class ListParameter(CpSatParameter):
     This parameter is split into multiple binary parameters in Optuna to facilitate optimization.
     """
 
-    def __init__(self, name: str, default_value: list, values: list):
+    def __init__(self, name: str, default_value: list, values: list, description: str = ""):
         """
         Initialize the list parameter with a name, default subset, and list of possible values.
 
@@ -192,7 +193,7 @@ class ListParameter(CpSatParameter):
             default_value: The default subset of values.
             values: The complete list of possible values from which a subset can be selected.
         """
-        super().__init__(name, tuple(sorted(default_value)))
+        super().__init__(name, tuple(sorted(default_value)), description=description)
         self.values = values
 
     def sample(self, trial: optuna.Trial) -> list:
@@ -269,7 +270,7 @@ class IntFromOrderedListParameter(CpSatParameter):
         The default value should be the index of the value in the list, not the value itself.
     """
 
-    def __init__(self, name: str, default_index: int, values: list):
+    def __init__(self, name: str, default_index: int, values: list, description: str = ""):
         """
         Initialize the parameter with a name, default index, and ordered list of possible values.
 
@@ -278,7 +279,7 @@ class IntFromOrderedListParameter(CpSatParameter):
             default_index: The index of the default value in the list of possible values.
             values: The ordered list of possible values.
         """
-        super().__init__(name, default_index)
+        super().__init__(name, default_index, description=description)
         self.values = values
 
     def sample(self, trial: optuna.Trial):
