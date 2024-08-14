@@ -1,4 +1,3 @@
-from abc import ABC, abstractmethod
 from collections import defaultdict
 from datetime import datetime
 from ortools.sat.python import cp_model
@@ -6,7 +5,7 @@ from scipy import stats
 from .parameter_space import CpSatParameterSpace
 import optuna
 import numpy as np
-from ortools.sat import cp_model_pb2
+from .metrics import Metric
 
 
 def confidence_intervals_do_not_overlap(list1, list2, confidence=0.95):
@@ -28,89 +27,11 @@ def confidence_intervals_do_not_overlap(list1, list2, confidence=0.95):
         return False
 
 
-class Metric(ABC):
+class OptunaCpSatStrategy:
     """
-    A metric that describes how good a run of the solver was. Higher is better.
-    """
-
-    @abstractmethod
-    def __call__(
-        self,
-        status: cp_model_pb2.CpSolverStatus,
-        obj_value: float | None,
-        time_in_s: float,
-    ) -> float:
-        pass
-
-
-class MaxObjective(Metric):
-    """
-    This metric tries maximize the objective value within a time limit.
+    This class interacts with Optuna to tune the hyperparameters of a CP-SAT model.
     """
 
-    def __init__(self, obj_for_timeout: int):
-        """
-        Will return the objective value if a solution was found within the time limit, otherwise obj_for_timeout.
-        It does not care about the status of the solver, but only if there was a feasible solution.
-        :param obj_for_timeout: The value to return if the solver did not find any solution within the time limit.
-        """
-        self.obj_for_timeout = obj_for_timeout
-
-    def __call__(
-        self,
-        status: cp_model_pb2.CpSolverStatus,
-        obj_value: float | None,
-        time_in_s: float,
-    ) -> float:
-        if obj_value is not None:
-            return obj_value
-        else:
-            return self.obj_for_timeout
-
-
-class MinObjective(Metric):
-    """
-    Like MaxObjective, but tries to minimize the objective value within a time limit.
-    Because the metric is supposed to be maximized, the value is negated internally.
-    """
-
-    def __init__(self, obj_for_timeout: int):
-        self.obj_for_timeout = obj_for_timeout
-
-    def __call__(
-        self,
-        status: cp_model_pb2.CpSolverStatus,
-        obj_value: float | None,
-        time_in_s: float,
-    ) -> float:
-        if obj_value is not None:
-            return -obj_value
-        else:
-            return -self.obj_for_timeout
-
-
-class MinTimeToOptimal(Metric):
-    """
-    This metric minimizes the time it takes to find an optimal solution. Note that increasing the relative gap tolerance
-    will actually consider all solutions with a gap of at most the given value as optimal.
-    """
-
-    def __init__(self, obj_for_timeout: int):
-        self.obj_for_timeout = obj_for_timeout
-
-    def __call__(
-        self,
-        status: cp_model_pb2.CpSolverStatus,
-        obj_value: float | None,
-        time_in_s: float,
-    ) -> float:
-        if status == cp_model.OPTIMAL:
-            return -time_in_s
-        else:
-            return -self.obj_for_timeout
-
-
-class Objective:
     def __init__(
         self,
         model: cp_model.CpModel,
@@ -138,6 +59,9 @@ class Objective:
         return self.metric(status=status, obj_value=obj, time_in_s=solve_time)
 
     def compute_baseline(self):
+        """
+        Compute the baseline by solving the model with the default parameters.
+        """
         if not self._baseline:
             print("Computing baseline")
             solver = self.parameter_space.sample(None)
@@ -151,6 +75,9 @@ class Objective:
         return frozenset(self.parameter_space.get_cpsat_params_diff(trial).items())
 
     def __call__(self, trial: optuna.Trial):
+        """
+        This function is called by Optuna to evaluate a trial.
+        """
         solver = self.parameter_space.sample(trial)
         baseline = self.compute_baseline()
         prune_if_below = min(baseline) - 0.1 * (max(baseline) - min(baseline))
@@ -166,6 +93,10 @@ class Objective:
             value = self._solve(solver)
             self._samples[param_key].append(value)
             if value < prune_if_below:
+                # Save some time by pruning the trial if it is already worse than the baseline
+                # Instead of using Optuna's pruner, we return the bad value as this allows
+                # Optuna to still use the value for the study. We just don't waste time on
+                # getting a more precise measurement.
                 return value
         return float(np.mean(self._samples[param_key]))
 
@@ -179,6 +110,11 @@ class Objective:
         )
 
     def best_params(self, max_changes: int = -1):
+        """
+        Returns the best parameters found so far. Use this function instead of the Optuna study's best_params
+        function as it not only converts the parameters to the actual CP-SAT parameters, but can also give
+        more information about the significance of the results.
+        """
         keys_to_consider = [
             key for key in self._samples if max_changes < 0 or len(key) <= max_changes
         ]

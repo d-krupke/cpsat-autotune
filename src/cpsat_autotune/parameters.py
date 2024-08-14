@@ -116,8 +116,9 @@ class IntFromOrderedListParameter(CpSatParameter):
     def get_cpsat_default(self):
         return self.values[self._default_value]
 
-    def get_cpsat_param(self, optuna_param):
-        return self.values[optuna_param]
+    def get_cpsat_params(self, optuna_params):
+        return {self.name: self.values[optuna_params[self.name]]}
 
-    def get_optuna_param(self, cpsat_param):
-        return self.values.index(cpsat_param)
+    def get_optuna_params(self, cpsat_params):
+        value = cpsat_params[self.name]
+        return {self.name: self.values.index(value)}

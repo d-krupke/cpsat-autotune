@@ -1,5 +1,6 @@
 import optuna
-from .objective import Objective, MinObjective, MaxObjective, MinTimeToOptimal
+from .objective import OptunaCpSatStrategy
+from .metrics import MinObjective, MaxObjective, MinTimeToOptimal
 from .parameter_space import CpSatParameterSpace
 from ortools.sat.python import cp_model
 
@@ -15,7 +16,9 @@ def print_best_params(best_params, diff_to_baseline, significant):
 
 
 def _tune(
-    objective: Objective, parameter_space: CpSatParameterSpace, n_trials: int = 100
+    objective: OptunaCpSatStrategy,
+    parameter_space: CpSatParameterSpace,
+    n_trials: int = 100,
 ):
     # Extract default parameter values to use in the initial trial
     default_params = parameter_space.get_default_params_for_optuna()
@@ -71,7 +74,7 @@ def tune_time_to_optimal(
     if opt_gap > 0.0:
         parameter_space.fix_parameter("relative_gap_tolerance", opt_gap)
     metric = MinTimeToOptimal(obj_for_timeout=int(10 * timelimit_in_s))
-    objective = Objective(
+    objective = OptunaCpSatStrategy(
         model,
         parameter_space,
         metric=metric,
@@ -114,7 +117,7 @@ def tune_for_quality_within_timelimit(
             f"Unknown direction {direction}. Has to be 'maximize' or 'minimize'."
         )
 
-    objective = Objective(
+    objective = OptunaCpSatStrategy(
         model,
         parameter_space,
         metric=metric,
