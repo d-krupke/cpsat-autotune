@@ -93,7 +93,6 @@ repos:
       - id: codespell
         exclude: ^(LICENSE$)
 
-
   - repo: local
     hooks:
       - id: disallow-caps

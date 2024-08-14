@@ -1,10 +1,12 @@
+from abc import ABC, abstractmethod
 from collections import defaultdict
+from datetime import datetime
 from ortools.sat.python import cp_model
 from scipy import stats
 from .parameter_space import CpSatParameterSpace
 import optuna
 import numpy as np
-
+from ortools.sat import cp_model_pb2
 
 def confidence_intervals_do_not_overlap(list1, list2, confidence=0.95):
     def calculate_confidence_interval(data, confidence):
@@ -25,37 +27,92 @@ def confidence_intervals_do_not_overlap(list1, list2, confidence=0.95):
         return False
 
 
+class Metric(ABC):
+    """
+    A metric that describes how good a run of the solver was. Higher is better.
+    """
+    @abstractmethod
+    def __call__(self, status:  cp_model_pb2.CpSolverStatus, obj_value: float|None, time_in_s: float) -> float:
+        pass
+    
+class MaxObjective(Metric):
+    """
+    This metric tries maximize the objective value within a time limit.
+    """
+    def __init__(self, obj_for_timeout: int):
+        """
+        Will return the objective value if a solution was found within the time limit, otherwise obj_for_timeout.
+        It does not care about the status of the solver, but only if there was a feasible solution.
+        :param obj_for_timeout: The value to return if the solver did not find any solution within the time limit.
+        """
+        self.obj_for_timeout = obj_for_timeout
+
+    def __call__(self, status:  cp_model_pb2.CpSolverStatus, obj_value: float | None, time_in_s: float) -> float:
+        if obj_value is not None:
+            return obj_value
+        else:
+            return self.obj_for_timeout
+        
+class MinObjective(Metric):
+    """
+    Like MaxObjective, but tries to minimize the objective value within a time limit.
+    Because the metric is supposed to be maximized, the value is negated internally.
+    """
+    def __init__(self, obj_for_timeout: int):
+        self.obj_for_timeout = obj_for_timeout
+
+    def __call__(self, status:  cp_model_pb2.CpSolverStatus, obj_value: float | None, time_in_s: float) -> float:
+        if obj_value is not None:
+            return -obj_value
+        else:
+            return -self.obj_for_timeout
+        
+class MinTimeToOptimal(Metric):
+    """
+    This metric minimizes the time it takes to find an optimal solution. Note that increasing the relative gap tolerance
+    will actually consider all solutions with a gap of at most the given value as optimal.
+    """
+    def __init__(self, obj_for_timeout: int):
+        self.obj_for_timeout = obj_for_timeout
+
+    def __call__(self, status: cp_model_pb2.CpSolverStatus, obj_value: float | None, time_in_s: float) -> float:
+        if status == cp_model.OPTIMAL:
+            return -time_in_s
+        else:
+            return -self.obj_for_timeout
+
 class Objective:
     def __init__(
         self,
         model: cp_model.CpModel,
         parameter_space: CpSatParameterSpace,
-        direction: str = "maximize",
-        obj_for_timeout: int = 0,
+        metric: Metric,
+        n_samples_per_param: int = 10,
+        max_samples_per_param: int = 30,
     ):
-        if direction not in ("maximize", "minimize"):
-            raise ValueError("Direction must be 'maximize' or 'minimize'")
-        self.maximization = direction == "maximize"
         self.model = model
         self.parameter_space = parameter_space
-        self.n_trials = 10
-        self.max_trials = 30
-        self.obj_for_timeout = 0
+        self.n_samples_per_param = n_samples_per_param
+        self.max_samples_per_param = max_samples_per_param
+        self.metric = metric
         self._baseline = []
         self._samples = defaultdict(list)
 
     def _solve(self, solver: cp_model.CpSolver):
+        time_begin = datetime.now()
         status = solver.solve(self.model)
+        time_end = datetime.now()
+        solve_time = (time_end - time_begin).total_seconds()
+        obj = None
         if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
-            return solver.objective_value * (1 if self.maximization else -1)
-        else:
-            return self.obj_for_timeout * (1 if self.maximization else -1)
+            obj = solver.objective_value
+        return self.metric(status = status, obj_value=obj, time_in_s=solve_time)
 
     def compute_baseline(self):
         if not self._baseline:
             print("Computing baseline")
             solver = self.parameter_space.sample(None)
-            values = [self._solve(solver) for _ in range(self.max_trials)]
+            values = [self._solve(solver) for _ in range(self.max_samples_per_param)]
             self._samples[frozenset()].extend(values)
             self._baseline = values
             print("Baseline:", values)
@@ -69,17 +126,17 @@ class Objective:
         baseline = self.compute_baseline()
         prune_if_below = min(baseline) - 0.1*(max(baseline) - min(baseline))
         param_key = self._get_key_from_trial(trial)
-        n_trials = self.n_trials
+        n_trials = self.n_samples_per_param
         if param_key in self._samples:
             n_trials = min(
-                self.max_trials - len(self._samples[param_key]), self.n_trials
+                self.max_samples_per_param - len(self._samples[param_key]), self.n_samples_per_param
             )
             n_trials = max(n_trials, 0)
         for _ in range(n_trials):
             value = self._solve(solver)
             self._samples[param_key].append(value)
             if value < prune_if_below:
-                raise optuna.TrialPruned()
+                return value
         return float(np.mean(self._samples[param_key]))
 
     def evaluate_trial(self, trial: optuna.Trial | optuna.trial.FixedTrial):
