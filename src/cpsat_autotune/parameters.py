@@ -1,86 +1,170 @@
 from abc import ABC, abstractmethod
 import optuna
 
-
 class CpSatParameter(ABC):
     """
-    An abstract class for a parameter of CP-SAT that can be optimized with Optuna.
-    Optuna and CP-SAT may need different representations of the parameters, so this class
-    provides methods to convert between the two.
+    Abstract base class representing a CP-SAT parameter that can be optimized using Optuna.
+    This class defines the interface for converting parameters between CP-SAT and Optuna formats,
+    allowing for seamless integration between the two frameworks.
     """
-    def __init__(self, name, default_value):
+
+    def __init__(self, name: str, default_value):
+        """
+        Initialize the parameter with a name and default value.
+
+        Args:
+            name: The name of the parameter.
+            default_value: The default value for the parameter.
+        """
         self.name = name
         self._default_value = default_value
 
     @abstractmethod
     def sample(self, trial: optuna.Trial):
+        """
+        Abstract method to define how the parameter should be sampled during optimization.
+
+        Args:
+            trial: An Optuna trial object used to suggest parameter values.
+
+        Returns:
+            The sampled value for the parameter.
+        """
         pass
 
     def get_optuna_default(self) -> dict:
         """
-        Return the default value in the format that Optuna expects.
-        As for example lists need to be split into multiple parameters, this method
-        returns a dictionary.
+        Retrieve the default value of the parameter formatted for Optuna.
+
+        Returns:
+            A dictionary representing the default value in Optuna's expected format.
         """
         return {self.name: self._default_value}
 
     def get_cpsat_default(self):
         """
-        Return the default value in the format that CP-SAT expects.
-        As this matches a single CP-SAT parameter, this method returns the value itself,
-        differently from get_optuna_default.
+        Retrieve the default value of the parameter formatted for CP-SAT.
+
+        Returns:
+            The default value in CP-SAT's expected format.
         """
         return self._default_value
 
     def get_cpsat_params(self, optuna_params: dict) -> dict:
         """
-        Convert the Optuna parameters to CP-SAT parameters.
+        Convert Optuna parameter values to CP-SAT parameter values.
+
+        Args:
+            optuna_params: A dictionary of parameter values suggested by Optuna.
+
+        Returns:
+            A dictionary of parameter values formatted for CP-SAT.
         """
         return {self.name: optuna_params[self.name]}
 
     def get_optuna_params(self, cpsat_params: dict) -> dict:
         """
-        Convert the CP-SAT parameters to Optuna parameters.
+        Convert CP-SAT parameter values to Optuna parameter values.
+
+        Args:
+            cpsat_params: A dictionary of parameter values from CP-SAT.
+
+        Returns:
+            A dictionary of parameter values formatted for Optuna.
         """
         return {self.name: cpsat_params[self.name]}
 
 
 class BoolParameter(CpSatParameter):
     """
-    A simple True/False parameter of CP-SAT.
+    A CP-SAT parameter representing a boolean (True/False) value.
     """
-    def __init__(self, name, default_value):
+
+    def __init__(self, name: str, default_value: bool):
+        """
+        Initialize the boolean parameter with a name and default value.
+
+        Args:
+            name: The name of the parameter.
+            default_value: The default boolean value for the parameter.
+        """
         super().__init__(name, default_value)
 
-    def sample(self, trial: optuna.Trial):
+    def sample(self, trial: optuna.Trial) -> bool:
+        """
+        Sample a boolean value for the parameter during optimization.
+
+        Args:
+            trial: An Optuna trial object used to suggest parameter values.
+
+        Returns:
+            A boolean value sampled for the parameter.
+        """
         return trial.suggest_categorical(self.name, [True, False])
 
 
 class CategoryParameter(CpSatParameter):
     """
-    A parameter of CP-SAT that can take a value from a list of values.
-    The order of the values does not have any semantic meaning.
-    If the order has a meaning, use IntFromOrderedListParameter instead, as it allows Optuna to make assumptions about the order.
+    A CP-SAT parameter that can take one value from a predefined list of categorical values.
+    The order of these values does not have semantic significance.
     """
-    def __init__(self, name, default_value, values):
+
+    def __init__(self, name: str, default_value, values: list):
+        """
+        Initialize the categorical parameter with a name, default value, and list of possible values.
+
+        Args:
+            name: The name of the parameter.
+            default_value: The default value for the parameter.
+            values: A list of possible values that the parameter can take.
+        """
         super().__init__(name, default_value)
         self.values = values
 
     def sample(self, trial: optuna.Trial):
+        """
+        Sample a value from the list of categorical values during optimization.
+
+        Args:
+            trial: An Optuna trial object used to suggest parameter values.
+
+        Returns:
+            A value from the list of possible values.
+        """
         return trial.suggest_categorical(self.name, self.values)
 
 
 class IntParameter(CpSatParameter):
     """
-    A parameter of CP-SAT that is an integer.
+    A CP-SAT parameter representing an integer value, which may be sampled within a defined range.
     """
-    def __init__(self, name, default_value, lb, ub, log: bool):
+
+    def __init__(self, name: str, default_value: int, lb: int, ub: int, log: bool):
+        """
+        Initialize the integer parameter with a name, default value, and range bounds.
+
+        Args:
+            name: The name of the parameter.
+            default_value: The default integer value for the parameter.
+            lb: The lower bound of the integer range.
+            ub: The upper bound of the integer range.
+            log: Whether to sample the value on a logarithmic scale.
+        """
         super().__init__(name, default_value)
         self.lower_bound = lb
         self.upper_bound = ub
         self.log = log
 
-    def sample(self, trial: optuna.Trial):
+    def sample(self, trial: optuna.Trial) -> int:
+        """
+        Sample an integer value within the specified range during optimization.
+
+        Args:
+            trial: An Optuna trial object used to suggest parameter values.
+
+        Returns:
+            An integer value sampled within the specified range.
+        """
         return trial.suggest_int(
             self.name, low=self.lower_bound, high=self.upper_bound, log=self.log
         )
@@ -88,14 +172,32 @@ class IntParameter(CpSatParameter):
 
 class ListParameter(CpSatParameter):
     """
-    A parameter of CP-SAT that is a list of values and we need to select a subset of them.
-    This is a complex parameter that is not directly supported by Optuna, thus, we need to split it into multiple parameters.
+    A CP-SAT parameter representing a list of values, where a subset of these values must be selected.
+    This parameter is split into multiple binary parameters in Optuna to facilitate optimization.
     """
-    def __init__(self, name, default_value, values):
+
+    def __init__(self, name: str, default_value: list, values: list):
+        """
+        Initialize the list parameter with a name, default subset, and list of possible values.
+
+        Args:
+            name: The name of the parameter.
+            default_value: The default subset of values.
+            values: The complete list of possible values from which a subset can be selected.
+        """
         super().__init__(name, tuple(sorted(default_value)))
         self.values = values
 
-    def sample(self, trial: optuna.Trial):
+    def sample(self, trial: optuna.Trial) -> list:
+        """
+        Sample a subset of the list of values during optimization.
+
+        Args:
+            trial: An Optuna trial object used to suggest parameter values.
+
+        Returns:
+            A list of values representing a subset of the possible values.
+        """
         sampled_list = []
         for value in self.values:
             select = trial.suggest_categorical(f"{self.name}:{value}", [True, False])
@@ -104,12 +206,27 @@ class ListParameter(CpSatParameter):
         return sampled_list
 
     def get_optuna_default(self) -> dict:
+        """
+        Retrieve the default value formatted for Optuna as a dictionary of binary selections.
+
+        Returns:
+            A dictionary representing the default selection of values in Optuna's format.
+        """
         return {
             f"{self.name}:{value}": value in self._default_value
             for value in self.values
         }
 
-    def get_cpsat_params(self, optuna_params):
+    def get_cpsat_params(self, optuna_params: dict) -> dict:
+        """
+        Convert Optuna parameter values to CP-SAT format for this list parameter.
+
+        Args:
+            optuna_params: A dictionary of parameter values suggested by Optuna.
+
+        Returns:
+            A dictionary representing the selected subset of values in CP-SAT's format.
+        """
         return {
             self.name: tuple(
                 sorted(
@@ -120,7 +237,16 @@ class ListParameter(CpSatParameter):
             )
         }
 
-    def get_optuna_params(self, cpsat_params):
+    def get_optuna_params(self, cpsat_params: dict) -> dict:
+        """
+        Convert CP-SAT parameter values to Optuna format for this list parameter.
+
+        Args:
+            cpsat_params: A dictionary of parameter values from CP-SAT.
+
+        Returns:
+            A dictionary representing the selected subset of values in Optuna's format.
+        """
         return {
             f"{self.name}:{value}": value in cpsat_params[self.name]
             for value in self.values
@@ -129,32 +255,78 @@ class ListParameter(CpSatParameter):
 
 class IntFromOrderedListParameter(CpSatParameter):
     """
-    A mixture of categorical and integer parameter. The parameter has to be from
-    a list of values, but the order has a semantic meaning, meaning that entry 1 is
-    semantically between 0 and 2, etc. Separating this from a categorical parameter
-    allows Optuna to make assumptions about the order of the values.
+    A CP-SAT parameter representing an integer value selected from an ordered list of values.
+    The order of the values has semantic meaning, allowing Optuna to make assumptions about this ordering during optimization.
 
-    CAVEAT: The default value has to be the index of the value in the list, not the value itself.
+    Note:
+        The default value should be the index of the value in the list, not the value itself.
     """
 
-    def __init__(self, name, default_index, values):
+    def __init__(self, name: str, default_index: int, values: list):
+        """
+        Initialize the parameter with a name, default index, and ordered list of possible values.
+
+        Args:
+            name: The name of the parameter.
+            default_index: The index of the default value in the list of possible values.
+            values: The ordered list of possible values.
+        """
         super().__init__(name, default_index)
         self.values = values
 
     def sample(self, trial: optuna.Trial):
+        """
+        Sample an index from the ordered list of values during optimization.
+
+        Args:
+            trial: An Optuna trial object used to suggest parameter values.
+
+        Returns:
+            The value selected from the ordered list based on the sampled index.
+        """
         return self.values[
             trial.suggest_int(self.name, low=0, high=len(self.values) - 1)
         ]
 
-    def get_optuna_default(self):
+    def get_optuna_default(self) -> dict:
+        """
+        Retrieve the default index formatted for Optuna.
+
+        Returns:
+            A dictionary representing the default index in Optuna's format.
+        """
         return {self.name: self._default_value}
 
     def get_cpsat_default(self):
+        """
+        Retrieve the default value from the list formatted for CP-SAT.
+
+        Returns:
+            The value corresponding to the default index in the ordered list.
+        """
         return self.values[self._default_value]
 
-    def get_cpsat_params(self, optuna_params):
+    def get_cpsat_params(self, optuna_params: dict) -> dict:
+        """
+        Convert Optuna parameter values to CP-SAT format for this ordered list parameter.
+
+        Args:
+            optuna_params: A dictionary of parameter values suggested by Optuna.
+
+        Returns:
+            A dictionary representing the selected value from the ordered list in CP-SAT's format.
+        """
         return {self.name: self.values[optuna_params[self.name]]}
 
-    def get_optuna_params(self, cpsat_params):
+    def get_optuna_params(self, cpsat_params: dict) -> dict:
+        """
+        Convert CP-SAT parameter values to Optuna format for this ordered list parameter.
+
+        Args:
+            cpsat_params: A dictionary of parameter values from CP-SAT.
+
+        Returns:
+            A dictionary representing the index of the selected value in Optuna's format.
+        """
         value = cpsat_params[self.name]
         return {self.name: self.values.index(value)}
