@@ -136,8 +136,8 @@ This is significant: True
 ### 1. `tune_time_to_optimal`
 
 This method tunes the CP-SAT solver's hyperparameters to minimize the time
-required to find an optimal solution. This is particularly useful for scenarios
-where time efficiency is critical.
+required to find an optimal solution. This is useful if you need a guaranteed
+solution without a fixed time limit.
 
 #### Parameters:
 
@@ -153,8 +153,9 @@ where time efficiency is critical.
 
 ### 2. `tune_for_quality_within_timelimit`
 
-This method tunes hyperparameters to maximize or minimize the solution quality
-within a specified time limit.
+This method tunes hyperparameters to maximize or minimize the objective value
+within a specified time limit. This is useful when you need to find a good
+solution within a fixed time frame, but do not require any guarantees.
 
 #### Parameters:
 
