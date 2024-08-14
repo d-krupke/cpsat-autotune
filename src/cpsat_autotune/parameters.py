@@ -81,6 +81,12 @@ class CpSatParameter(ABC):
             A dictionary of parameter values formatted for Optuna.
         """
         return {self.name: cpsat_params[self.name]}
+    
+    def __hash__(self) -> int:
+        return hash(self.name)
+    
+    def __str__(self) -> str:
+        return f"{self.name} [default: {self.get_cpsat_default()}]"
 
 
 class BoolParameter(CpSatParameter):
