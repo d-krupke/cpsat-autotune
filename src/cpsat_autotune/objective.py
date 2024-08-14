@@ -8,6 +8,7 @@ import optuna
 import numpy as np
 from ortools.sat import cp_model_pb2
 
+
 def confidence_intervals_do_not_overlap(list1, list2, confidence=0.95):
     def calculate_confidence_interval(data, confidence):
         n = len(data)
@@ -31,14 +32,22 @@ class Metric(ABC):
     """
     A metric that describes how good a run of the solver was. Higher is better.
     """
+
     @abstractmethod
-    def __call__(self, status:  cp_model_pb2.CpSolverStatus, obj_value: float|None, time_in_s: float) -> float:
+    def __call__(
+        self,
+        status: cp_model_pb2.CpSolverStatus,
+        obj_value: float | None,
+        time_in_s: float,
+    ) -> float:
         pass
-    
+
+
 class MaxObjective(Metric):
     """
     This metric tries maximize the objective value within a time limit.
     """
+
     def __init__(self, obj_for_timeout: int):
         """
         Will return the objective value if a solution was found within the time limit, otherwise obj_for_timeout.
@@ -47,39 +56,59 @@ class MaxObjective(Metric):
         """
         self.obj_for_timeout = obj_for_timeout
 
-    def __call__(self, status:  cp_model_pb2.CpSolverStatus, obj_value: float | None, time_in_s: float) -> float:
+    def __call__(
+        self,
+        status: cp_model_pb2.CpSolverStatus,
+        obj_value: float | None,
+        time_in_s: float,
+    ) -> float:
         if obj_value is not None:
             return obj_value
         else:
             return self.obj_for_timeout
-        
+
+
 class MinObjective(Metric):
     """
     Like MaxObjective, but tries to minimize the objective value within a time limit.
     Because the metric is supposed to be maximized, the value is negated internally.
     """
+
     def __init__(self, obj_for_timeout: int):
         self.obj_for_timeout = obj_for_timeout
 
-    def __call__(self, status:  cp_model_pb2.CpSolverStatus, obj_value: float | None, time_in_s: float) -> float:
+    def __call__(
+        self,
+        status: cp_model_pb2.CpSolverStatus,
+        obj_value: float | None,
+        time_in_s: float,
+    ) -> float:
         if obj_value is not None:
             return -obj_value
         else:
             return -self.obj_for_timeout
-        
+
+
 class MinTimeToOptimal(Metric):
     """
     This metric minimizes the time it takes to find an optimal solution. Note that increasing the relative gap tolerance
     will actually consider all solutions with a gap of at most the given value as optimal.
     """
+
     def __init__(self, obj_for_timeout: int):
         self.obj_for_timeout = obj_for_timeout
 
-    def __call__(self, status: cp_model_pb2.CpSolverStatus, obj_value: float | None, time_in_s: float) -> float:
+    def __call__(
+        self,
+        status: cp_model_pb2.CpSolverStatus,
+        obj_value: float | None,
+        time_in_s: float,
+    ) -> float:
         if status == cp_model.OPTIMAL:
             return -time_in_s
         else:
             return -self.obj_for_timeout
+
 
 class Objective:
     def __init__(
@@ -106,7 +135,7 @@ class Objective:
         obj = None
         if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
             obj = solver.objective_value
-        return self.metric(status = status, obj_value=obj, time_in_s=solve_time)
+        return self.metric(status=status, obj_value=obj, time_in_s=solve_time)
 
     def compute_baseline(self):
         if not self._baseline:
@@ -124,12 +153,13 @@ class Objective:
     def __call__(self, trial: optuna.Trial):
         solver = self.parameter_space.sample(trial)
         baseline = self.compute_baseline()
-        prune_if_below = min(baseline) - 0.1*(max(baseline) - min(baseline))
+        prune_if_below = min(baseline) - 0.1 * (max(baseline) - min(baseline))
         param_key = self._get_key_from_trial(trial)
         n_trials = self.n_samples_per_param
         if param_key in self._samples:
             n_trials = min(
-                self.max_samples_per_param - len(self._samples[param_key]), self.n_samples_per_param
+                self.max_samples_per_param - len(self._samples[param_key]),
+                self.n_samples_per_param,
             )
             n_trials = max(n_trials, 0)
         for _ in range(n_trials):
