@@ -9,9 +9,9 @@ where = ["src"]
 name = "cpsat-autotune"
 version = "0.0.1"
 authors = [
-    { name = "TU Braunschweig, IBR, Algorithms Group (Dominik Krupke)", email = "krupke@ibr.cs.tu-bs.de" },
+    { name = "Dominik Krupke", email = "krupked@gmail.com" },
 ]
-description = "A tool to automatically tune the parameters of the OR-Tools' CP-SAT solver."
+description = "A tool to automatically tune the hyperparameters of the OR-Tools' CP-SAT solver."
 readme = "README.md"
 requires-python = ">=3.8"
 classifiers = [
