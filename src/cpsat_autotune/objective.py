@@ -12,6 +12,7 @@ def do_cis_overlap(list1, list2, confidence=0.95):
     """
     Check if the confidence intervals of two lists overlap.
     """
+
     def calculate_confidence_interval(data, confidence):
         n = len(data)
         mean = np.mean(data)
@@ -108,9 +109,7 @@ class OptunaCpSatStrategy:
         values = self._samples[key]
         baseline = self._samples[frozenset()]
         # test significance
-        return np.mean(values) - np.mean(baseline), do_cis_overlap(
-            values, baseline
-        )
+        return np.mean(values) - np.mean(baseline), do_cis_overlap(values, baseline)
 
     def best_params(self, max_changes: int = -1):
         """

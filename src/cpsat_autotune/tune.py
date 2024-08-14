@@ -4,6 +4,7 @@ from .metrics import MinObjective, MaxObjective, MinTimeToOptimal
 from .parameter_space import CpSatParameterSpace
 from ortools.sat.python import cp_model
 
+
 def _print_best_params(best_params, diff_to_baseline, significant):
     """
     Print the best hyperparameters and their performance comparison against the baseline.
@@ -34,7 +35,7 @@ def _tune(
         objective: An instance of OptunaCpSatStrategy defining the objective for tuning.
         parameter_space: An instance of CpSatParameterSpace defining the search space for parameters.
         n_trials: The number of trials to execute in the tuning process.
-    
+
     Returns:
         A tuple containing the best parameters found, the performance difference to baseline, and a boolean indicating if the result is significant.
     """

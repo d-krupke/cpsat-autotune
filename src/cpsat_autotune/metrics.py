@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from ortools.sat.python import cp_model
 from ortools.sat import cp_model_pb2
 
+
 class Metric(ABC):
     """
     A metric that describes how good a run of the solver was. Higher is better.

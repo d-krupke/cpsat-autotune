@@ -3,8 +3,10 @@ This class provides some auxiliary classes to define the parameters that can be 
 This allows to map between the Optuna and CP-SAT parameter formats, making it easier to integrate the two frameworks.
 It also provides more types of parameters than Optuna does out of the box, such as list parameters.
 """
+
 from abc import ABC, abstractmethod
 import optuna
+
 
 class CpSatParameter(ABC):
     """
