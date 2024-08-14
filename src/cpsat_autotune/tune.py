@@ -66,8 +66,7 @@ def _tune(
             )
 
     # Return the best parameters and performance results
-    best_params_dict = {key: value for key, value in best_params}
-    return best_params_dict, diff_to_baseline, significant
+    return best_params, diff_to_baseline, significant
 
 
 def tune_time_to_optimal(

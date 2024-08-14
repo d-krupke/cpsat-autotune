@@ -1,5 +1,6 @@
 from collections import defaultdict
 from datetime import datetime
+import random
 from ortools.sat.python import cp_model
 from scipy import stats
 from .parameter_space import CpSatParameterSpace
@@ -50,6 +51,7 @@ class OptunaCpSatStrategy:
         self._samples = defaultdict(list)
 
     def _solve(self, solver: cp_model.CpSolver):
+        solver.parameters.random_seed = random.randint(0, 2**31 - 1)
         time_begin = datetime.now()
         status = solver.solve(self.model)
         time_end = datetime.now()
@@ -111,7 +113,7 @@ class OptunaCpSatStrategy:
         # test significance
         return np.mean(values) - np.mean(baseline), do_cis_overlap(values, baseline)
 
-    def best_params(self, max_changes: int = -1):
+    def best_params(self, max_changes: int = -1) -> tuple[dict, float, bool]:
         """
         Returns the best parameters found so far. Use this function instead of the Optuna study's best_params
         function as it not only converts the parameters to the actual CP-SAT parameters, but can also give
@@ -124,7 +126,7 @@ class OptunaCpSatStrategy:
         values = self._samples[best_key]
         baseline = self._samples[frozenset()]
         return (
-            best_key,
-            np.mean(values) - np.mean(baseline),
+            dict(best_key),
+            float(np.mean(values) - np.mean(baseline)),
             not do_cis_overlap(values, baseline),
         )

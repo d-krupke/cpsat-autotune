@@ -7,13 +7,13 @@ where = ["src"]
 
 [project]
 name = "cpsat-autotune"
-version = "0.0.1"
+version = "0.0.2"
 authors = [
     { name = "Dominik Krupke", email = "krupked@gmail.com" },
 ]
 description = "A tool to automatically tune the hyperparameters of the OR-Tools' CP-SAT solver."
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
