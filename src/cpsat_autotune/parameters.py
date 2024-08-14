@@ -3,6 +3,11 @@ import optuna
 
 
 class CpSatParameter(ABC):
+    """
+    An abstract class for a parameter of CP-SAT that can be optimized with Optuna.
+    Optuna and CP-SAT may need different representations of the parameters, so this class
+    provides methods to convert between the two.
+    """
     def __init__(self, name, default_value):
         self.name = name
         self._default_value = default_value
@@ -12,19 +17,38 @@ class CpSatParameter(ABC):
         pass
 
     def get_optuna_default(self) -> dict:
+        """
+        Return the default value in the format that Optuna expects.
+        As for example lists need to be split into multiple parameters, this method
+        returns a dictionary.
+        """
         return {self.name: self._default_value}
 
     def get_cpsat_default(self):
+        """
+        Return the default value in the format that CP-SAT expects.
+        As this matches a single CP-SAT parameter, this method returns the value itself,
+        differently from get_optuna_default.
+        """
         return self._default_value
 
-    def get_cpsat_params(self, optuna_params):
+    def get_cpsat_params(self, optuna_params: dict) -> dict:
+        """
+        Convert the Optuna parameters to CP-SAT parameters.
+        """
         return {self.name: optuna_params[self.name]}
 
-    def get_optuna_params(self, cpsat_params):
+    def get_optuna_params(self, cpsat_params: dict) -> dict:
+        """
+        Convert the CP-SAT parameters to Optuna parameters.
+        """
         return {self.name: cpsat_params[self.name]}
 
 
 class BoolParameter(CpSatParameter):
+    """
+    A simple True/False parameter of CP-SAT.
+    """
     def __init__(self, name, default_value):
         super().__init__(name, default_value)
 
@@ -33,6 +57,11 @@ class BoolParameter(CpSatParameter):
 
 
 class CategoryParameter(CpSatParameter):
+    """
+    A parameter of CP-SAT that can take a value from a list of values.
+    The order of the values does not have any semantic meaning.
+    If the order has a meaning, use IntFromOrderedListParameter instead, as it allows Optuna to make assumptions about the order.
+    """
     def __init__(self, name, default_value, values):
         super().__init__(name, default_value)
         self.values = values
@@ -42,6 +71,9 @@ class CategoryParameter(CpSatParameter):
 
 
 class IntParameter(CpSatParameter):
+    """
+    A parameter of CP-SAT that is an integer.
+    """
     def __init__(self, name, default_value, lb, ub, log: bool):
         super().__init__(name, default_value)
         self.lower_bound = lb
@@ -55,6 +87,10 @@ class IntParameter(CpSatParameter):
 
 
 class ListParameter(CpSatParameter):
+    """
+    A parameter of CP-SAT that is a list of values and we need to select a subset of them.
+    This is a complex parameter that is not directly supported by Optuna, thus, we need to split it into multiple parameters.
+    """
     def __init__(self, name, default_value, values):
         super().__init__(name, tuple(sorted(default_value)))
         self.values = values

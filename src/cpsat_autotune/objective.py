@@ -8,23 +8,23 @@ import numpy as np
 from .metrics import Metric
 
 
-def confidence_intervals_do_not_overlap(list1, list2, confidence=0.95):
+def do_cis_overlap(list1, list2, confidence=0.95):
+    """
+    Check if the confidence intervals of two lists overlap.
+    """
     def calculate_confidence_interval(data, confidence):
         n = len(data)
         mean = np.mean(data)
         sem = stats.sem(data)  # Standard error of the mean
         margin_of_error = sem * stats.t.ppf((1 + confidence) / 2.0, n - 1)
-        return mean, mean - margin_of_error, mean + margin_of_error
+        return mean - margin_of_error, mean + margin_of_error
 
     # Calculate confidence intervals
-    mean1, lower1, upper1 = calculate_confidence_interval(list1, confidence)
-    mean2, lower2, upper2 = calculate_confidence_interval(list2, confidence)
+    lower1, upper1 = calculate_confidence_interval(list1, confidence)
+    lower2, upper2 = calculate_confidence_interval(list2, confidence)
 
     # Check if confidence intervals overlap
-    if upper1 < lower2 or upper2 < lower1:
-        return True
-    else:
-        return False
+    return not (upper1 < lower2 or upper2 < lower1)
 
 
 class OptunaCpSatStrategy:
@@ -72,6 +72,9 @@ class OptunaCpSatStrategy:
         return self._baseline
 
     def _get_key_from_trial(self, trial: optuna.Trial | optuna.trial.FixedTrial):
+        """
+        Returns a hashable frozen set of the parameters that are different from the default parameters.
+        """
         return frozenset(self.parameter_space.get_cpsat_params_diff(trial).items())
 
     def __call__(self, trial: optuna.Trial):
@@ -105,7 +108,7 @@ class OptunaCpSatStrategy:
         values = self._samples[key]
         baseline = self._samples[frozenset()]
         # test significance
-        return np.mean(values) - np.mean(baseline), confidence_intervals_do_not_overlap(
+        return np.mean(values) - np.mean(baseline), do_cis_overlap(
             values, baseline
         )
 
@@ -124,5 +127,5 @@ class OptunaCpSatStrategy:
         return (
             best_key,
             np.mean(values) - np.mean(baseline),
-            confidence_intervals_do_not_overlap(values, baseline),
+            not do_cis_overlap(values, baseline),
         )
