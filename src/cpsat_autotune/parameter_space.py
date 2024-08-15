@@ -11,8 +11,6 @@ class CpSatParameterSpace:
     Based on empirical testing, the selection should be refined.
     """
 
-    
-
     def __init__(self, max_difference_to_default: int = -1):
         self.fixed_parameters = {}
         self.tunable_parameters = {param.name: param for param in CPSAT_PARAMETERS}

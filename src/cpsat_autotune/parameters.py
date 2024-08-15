@@ -81,10 +81,10 @@ class CpSatParameter(ABC):
             A dictionary of parameter values formatted for Optuna.
         """
         return {self.name: cpsat_params[self.name]}
-    
+
     def __hash__(self) -> int:
         return hash(self.name)
-    
+
     def __str__(self) -> str:
         return f"{self.name} [default: {self.get_cpsat_default()}]"
 
@@ -153,7 +153,15 @@ class IntParameter(CpSatParameter):
     A CP-SAT parameter representing an integer value, which may be sampled within a defined range.
     """
 
-    def __init__(self, name: str, default_value: int, lb: int, ub: int, log: bool, description: str = ""):
+    def __init__(
+        self,
+        name: str,
+        default_value: int,
+        lb: int,
+        ub: int,
+        log: bool,
+        description: str = "",
+    ):
         """
         Initialize the integer parameter with a name, default value, and range bounds.
 
@@ -190,7 +198,9 @@ class ListParameter(CpSatParameter):
     This parameter is split into multiple binary parameters in Optuna to facilitate optimization.
     """
 
-    def __init__(self, name: str, default_value: list, values: list, description: str = ""):
+    def __init__(
+        self, name: str, default_value: list, values: list, description: str = ""
+    ):
         """
         Initialize the list parameter with a name, default subset, and list of possible values.
 
@@ -276,7 +286,9 @@ class IntFromOrderedListParameter(CpSatParameter):
         The default value should be the index of the value in the list, not the value itself.
     """
 
-    def __init__(self, name: str, default_index: int, values: list, description: str = ""):
+    def __init__(
+        self, name: str, default_index: int, values: list, description: str = ""
+    ):
         """
         Initialize the parameter with a name, default index, and ordered list of possible values.
 
