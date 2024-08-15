@@ -1,5 +1,5 @@
 import optuna
-from .objective import OptunaCpSatStrategy
+from .objective import OptunaCpSatStrategy, ParameterStats
 from .metrics import MinObjective, MaxObjective, MinTimeToOptimal
 from .parameter_space import CpSatParameterSpace
 from ortools.sat.python import cp_model
@@ -8,7 +8,7 @@ def _tune(
     objective: OptunaCpSatStrategy,
     parameter_space: CpSatParameterSpace,
     n_trials: int = 100,
-):
+) -> ParameterStats:
     """
     Perform hyperparameter tuning using Optuna.
 
@@ -18,7 +18,7 @@ def _tune(
         n_trials: The number of trials to execute in the tuning process.
 
     Returns:
-        A tuple containing the best parameters found, the performance difference to baseline, and a boolean indicating if the result is significant.
+        The best parameters found during the tuning process.
     """
     # Initialize the study with the given parameter space and objective
     default_params = parameter_space.get_default_params_for_optuna()
@@ -53,7 +53,7 @@ def tune_time_to_optimal(
     n_samples_per_param: int = 10,
     max_samples_per_param: int = 30,
     n_trials: int = 100,
-):
+) -> ParameterStats:
     """
     Tune CP-SAT hyperparameters to minimize the time required to find an optimal solution.
 
@@ -81,7 +81,8 @@ def tune_time_to_optimal(
         max_samples_per_param=max_samples_per_param,
     )
 
-    _tune(objective, parameter_space, n_trials)
+    stats = _tune(objective, parameter_space, n_trials)
+    return stats
 
 
 def tune_for_quality_within_timelimit(
@@ -92,7 +93,7 @@ def tune_for_quality_within_timelimit(
     n_samples_per_param: int = 10,
     max_samples_per_param: int = 30,
     n_trials: int = 100,
-):
+) -> ParameterStats:
     """
     Tune CP-SAT hyperparameters to maximize or minimize solution quality within a given time limit.
 
@@ -128,4 +129,5 @@ def tune_for_quality_within_timelimit(
         max_samples_per_param=max_samples_per_param,
     )
 
-    _tune(objective, parameter_space, n_trials)
+    stats= _tune(objective, parameter_space, n_trials)
+    return stats
