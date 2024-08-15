@@ -11,10 +11,9 @@ class CpSatParameterSpace:
     Based on empirical testing, the selection should be refined.
     """
 
-    def __init__(self, max_difference_to_default: int = -1):
+    def __init__(self):
         self.fixed_parameters = {}
         self.tunable_parameters = {param.name: param for param in CPSAT_PARAMETERS}
-        self.max_difference_to_default = max_difference_to_default
 
     def fix_parameter(self, parameter: str, value=None):
         """
@@ -38,25 +37,17 @@ class CpSatParameterSpace:
             setattr(solver.parameters, parameter, value)
         if trial is None:
             return solver
-        num_different = 0
         if isinstance(trial, dict):
             trial = optuna.trial.FixedTrial(trial)
         for parameter in self.tunable_parameters.values():
             if parameter.name not in self.fixed_parameters:
                 value = parameter.sample(trial)
                 if value != parameter.get_cpsat_default():
-                    num_different += 1
-                    if (
-                        self.max_difference_to_default >= 0
-                        and num_different > self.max_difference_to_default
-                    ):
-                        raise optuna.TrialPruned()
-                value = parameter.sample(trial)
-                if isinstance(value, list):
-                    getattr(solver.parameters, parameter.name).extend(value)
+                    if isinstance(value, list):
+                        getattr(solver.parameters, parameter.name).extend(value)
 
-                else:
-                    setattr(solver.parameters, parameter.name, parameter.sample(trial))
+                    else:
+                        setattr(solver.parameters, parameter.name, value)
         return solver
 
     def get_default_params_for_optuna(self):

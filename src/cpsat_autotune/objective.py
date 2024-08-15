@@ -28,6 +28,35 @@ def do_cis_overlap(list1, list2, confidence=0.95):
     # Check if confidence intervals overlap
     return not (upper1 < lower2 or upper2 < lower1)
 
+class ParameterStats:
+    def __init__(self, cpsat_params: dict, values: list[float]):
+        self.cpsat_params = cpsat_params
+        self.values = values
+        self.mean = float(np.mean(values))
+        self.median = float(np.median(values))
+        self.std = float(np.std(values))
+        self.max = float(np.max(values))
+        self.min = float(np.min(values))
+        self.count = len(values)
+        self.changes = len(cpsat_params)
+
+    def do_cis_overlap(self, other, confidence=0.95):
+        return do_cis_overlap(self.values, other.values, confidence)
+    
+    def as_text(self):
+        text = "Parameter Statistics:\n"
+        if not self.cpsat_params:
+            text += "\tDefault Parameters\n"
+        else:
+            for key, value in self.cpsat_params.items():
+                text += f"\t{key}: {value}\n"
+        text += f" Mean: {self.mean}\n"
+        text += f" Median: {self.median}\n"
+        text += f" Standard Deviation: {self.std}\n"
+        text += f" Max: {self.max}\n"
+        text += f" Min: {self.min}\n"
+        text += f" Count: {self.count}\n"
+        return text
 
 class OptunaCpSatStrategy:
     """
@@ -106,14 +135,15 @@ class OptunaCpSatStrategy:
                 return value
         return float(np.mean(self._samples[param_key]))
 
-    def evaluate_trial(self, trial: optuna.Trial | optuna.trial.FixedTrial):
+    def evaluate_trial(self, trial: optuna.Trial | optuna.trial.FixedTrial) -> ParameterStats:
         key = self._get_key_from_trial(trial)
         values = self._samples[key]
-        baseline = self._samples[frozenset()]
-        # test significance
-        return np.mean(values) - np.mean(baseline), do_cis_overlap(values, baseline)
+        return ParameterStats(dict(key), [self.metric.convert(v) for v in values])
 
-    def best_params(self, max_changes: int = -1) -> tuple[dict, float, bool]:
+    def get_baseline(self) -> ParameterStats:
+        return ParameterStats({}, [self.metric.convert(v) for v in self.compute_baseline()])
+
+    def best_params(self, max_changes: int = -1) -> ParameterStats:
         """
         Returns the best parameters found so far. Use this function instead of the Optuna study's best_params
         function as it not only converts the parameters to the actual CP-SAT parameters, but can also give
@@ -123,10 +153,4 @@ class OptunaCpSatStrategy:
             key for key in self._samples if max_changes < 0 or len(key) <= max_changes
         ]
         best_key = max(keys_to_consider, key=lambda x: np.mean(self._samples[x]))
-        values = self._samples[best_key]
-        baseline = self._samples[frozenset()]
-        return (
-            dict(best_key),
-            float(np.mean(values) - np.mean(baseline)),
-            not do_cis_overlap(values, baseline),
-        )
+        return ParameterStats(dict(best_key), [self.metric.convert(v) for v in  self._samples[best_key]])

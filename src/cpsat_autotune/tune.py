@@ -4,25 +4,6 @@ from .metrics import MinObjective, MaxObjective, MinTimeToOptimal
 from .parameter_space import CpSatParameterSpace
 from ortools.sat.python import cp_model
 
-
-def _print_best_params(best_params, diff_to_baseline, significant):
-    """
-    Print the best hyperparameters and their performance comparison against the baseline.
-
-    Args:
-        best_params: A dictionary of the best parameters found.
-        diff_to_baseline: The difference in performance compared to the baseline parameters.
-        significant: A boolean indicating whether the improvement is statistically significant.
-    """
-    print("------------------------------------------------------------")
-    print("Best Hyperparameters:")
-    for key, value in best_params.items():
-        print(f"\t{key}: {value}")
-    print("Difference to Baseline:", diff_to_baseline)
-    print("Statistically Significant:", significant)
-    print("------------------------------------------------------------")
-
-
 def _tune(
     objective: OptunaCpSatStrategy,
     parameter_space: CpSatParameterSpace,
@@ -50,23 +31,19 @@ def _tune(
     study.optimize(objective, n_trials=n_trials)
 
     # Retrieve and print the best parameters
-    best_params, diff_to_baseline, significant = objective.best_params()
-    _print_best_params(best_params, diff_to_baseline, significant)
+    best_stats = objective.best_params()
+    print(best_stats.as_text())
+    #_print_best_params(best_params, diff_to_baseline, significant)
 
     # Evaluate parameter subsets and print if relevant
-    for i in range(1, len(best_params)):
-        (
-            best_params_of_size,
-            diff_to_baseline_of_size,
-            significant_of_size,
-        ) = objective.best_params(i)
-        if len(best_params_of_size) == i:
-            _print_best_params(
-                best_params_of_size, diff_to_baseline_of_size, significant_of_size
-            )
-
+    for i in range(1, best_stats.changes):
+        best_stats = objective.best_params(i)
+        if best_stats.changes == i:
+            print(best_stats.as_text())
+    print("Baseline:")
+    print(objective.get_baseline().as_text())
     # Return the best parameters and performance results
-    return best_params, diff_to_baseline, significant
+    return best_stats
 
 
 def tune_time_to_optimal(

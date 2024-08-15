@@ -17,6 +17,9 @@ class Metric(ABC):
     ) -> float:
         pass
 
+    def convert(self, value: float) -> float:
+        return value
+
 
 class MaxObjective(Metric):
     """
@@ -62,6 +65,9 @@ class MinObjective(Metric):
             return -obj_value
         else:
             return -self.obj_for_timeout
+        
+    def convert(self, value: float) -> float:
+        return -value
 
 
 class MinTimeToOptimal(Metric):
@@ -83,3 +89,6 @@ class MinTimeToOptimal(Metric):
             return -time_in_s
         else:
             return -self.obj_for_timeout
+        
+    def convert(self, value: float) -> float:
+        return -value
