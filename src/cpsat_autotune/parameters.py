@@ -133,6 +133,8 @@ class CategoryParameter(CpSatParameter):
             values: A list of possible values that the parameter can take.
         """
         super().__init__(name, default_value, description=description)
+        if default_value not in values:
+            raise ValueError("Default value must be one of the possible values")
         self.values = values
 
     def sample(self, trial: optuna.Trial):
