@@ -19,6 +19,9 @@ class Metric(ABC):
 
     def convert(self, value: float) -> float:
         return value
+    
+    def convert_to_maximization(self, value: float) -> float:
+        return value
 
 
 class MaxObjective(Metric):
@@ -40,10 +43,7 @@ class MaxObjective(Metric):
         model: cp_model.CpModel,
     ) -> float:
         solver.parameters.random_seed = random.randint(0, 2**31 - 1)
-        time_begin = datetime.now()
         status = solver.solve(model)
-        time_end = datetime.now()
-        time_in_s = (time_end - time_begin).total_seconds()
         obj_value = None
         if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
             obj_value = solver.objective_value
@@ -68,10 +68,7 @@ class MinObjective(Metric):
         model: cp_model.CpModel,
     ) -> float:
         solver.parameters.random_seed = random.randint(0, 2**31 - 1)
-        time_begin = datetime.now()
         status = solver.solve(model)
-        time_end = datetime.now()
-        time_in_s = (time_end - time_begin).total_seconds()
         obj_value = None
         if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
             obj_value = solver.objective_value
@@ -81,6 +78,9 @@ class MinObjective(Metric):
             return -self.obj_for_timeout
         
     def convert(self, value: float) -> float:
+        return -value
+    
+    def convert_to_maximization(self, value: float) -> float:
         return -value
 
 
@@ -103,13 +103,13 @@ class MinTimeToOptimal(Metric):
         status = solver.solve(model)
         time_end = datetime.now()
         time_in_s = (time_end - time_begin).total_seconds()
-        obj_value = None
-        if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
-            obj_value = solver.objective_value
         if status == cp_model.OPTIMAL:
             return -time_in_s
         else:
             return -self.obj_for_timeout
         
     def convert(self, value: float) -> float:
+        return -value
+    
+    def convert_to_maximization(self, value: float) -> float:
         return -value

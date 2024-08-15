@@ -217,6 +217,17 @@ problems but deteriorates on new, slightly different instances. For example,
 tuning may reduce solve times on a set of similar problems but could result in
 excessive solve times or failure on problems that deviate from the training set.
 
+## How does the Tuning Work?
+
+**cpsat-autotune** uses the `optuna` library to perform hyperparameter tuning
+on a preselected set of parameters. The output of optuna is then further refined
+and the significance of certain parameters is evaluated. Based on the assumption
+that the default parameters are already well-tuned for a broad range of problems,
+**cpsat-autotune** identifies the most significant changes to the default
+configuration and suggests these as potential improvements. It does take a few
+shortcuts to speed things up, while collecting more samples for important
+values.
+
 ### Recommendations:
 
 - **Robust Performance:** If consistent performance across a variety of

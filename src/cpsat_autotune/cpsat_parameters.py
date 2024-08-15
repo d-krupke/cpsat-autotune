@@ -3,6 +3,8 @@ This file specifies the parameters that this tool can tune. Check out the origin
 file from OR-Tools for more information:
 https://github.com/google/or-tools/blob/stable/ortools/sat/sat_parameters.proto
 """
+import textwrap
+from typing import Iterable
 
 from .parameters import (
     BoolParameter,
@@ -324,3 +326,20 @@ CPSAT_PARAMETERS = [
         """,
     ),
 ]
+
+def explain_parameters(parameters: Iterable[str]) -> str:
+    """
+    Returns a detailed explanation of the given parameters.
+    """
+    explanation = ""
+    for parameter in parameters:
+        for param in CPSAT_PARAMETERS:
+            if param.name == parameter:
+                explanation += f"Parameter: {param.name}\n"
+                explanation += f"\tDefault value: {param.get_cpsat_default()}\n"
+                # Use triple quotes for multiline description and dedent if necessary
+                description = textwrap.dedent(f"""\
+                {param.description}
+                """).strip()
+                explanation += f"\tDescription: {description}\n\n"
+    return explanation

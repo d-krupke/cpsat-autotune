@@ -19,12 +19,16 @@ class ParameterEvaluator:
         params: Dict[str, Union[int, bool, float, list, tuple]],
         fixed_params: Dict[str, Union[int, bool, float, list, tuple]],
         metric: Metric,
+        baseline_values: list[float]|None = None,
+        min_baseline_size: int = 10,
     ) -> None:
         self.model = model
         self.params = params
         self.fixed_params = fixed_params
         self.metric = metric
         self.results = defaultdict(list)
+        self.baseline_scores = baseline_values if baseline_values else []
+        self.min_baseline_size = min_baseline_size 
 
     def _initialize_solver(
         self, params: Dict[str, Union[int, bool, float, list, tuple]]
@@ -64,14 +68,15 @@ class ParameterEvaluator:
         the optimized set of parameters, and returns the optimal parameters.
         """
         # Baseline evaluation with multiple runs to assess variance
-        baseline_scores = [
-            self._evaluate_solver(self._initialize_solver(self.params))
-            for _ in range(10)
-        ]
-        baseline_avg = float(np.mean(baseline_scores))
-        baseline_min = min(baseline_scores)
+        while len(self.baseline_scores) < self.min_baseline_size:
+            self.baseline_scores.append(
+                self._evaluate_solver(self._initialize_solver(self.params))
+            )
+        baseline_avg = float(np.mean(self.baseline_scores))
+        worst_baseline = min(self.baseline_scores)  # worst performance in the baseline
 
         print("Baseline:", self.metric.convert(baseline_avg))
+        print("Dropping all parameter that are not required to be better than", self.metric.convert(worst_baseline))
 
         # Evaluate the impact of each parameter
         optimized_params = {}
@@ -79,7 +84,9 @@ class ParameterEvaluator:
 
         for key, solver in self._generate_variants(self.params):
             score = self._evaluate_solver(solver)
-            if score >= baseline_min:
+            if score >= worst_baseline: 
+                # performance is still not worse than the worst baseline
+                # so probably the parameter is not essential
                 print(f"\tDrop {key}: {self.metric.convert(score)}")
             else:
                 print(f"\tKeep {key}: {self.metric.convert(score)}")
@@ -101,4 +108,4 @@ class ParameterEvaluator:
         print("Optimal Parameters:", optimized_params)
 
         # Return the most suitable parameters
-        return optimized_params if optimized_score > baseline_min else self.params
+        return optimized_params if optimized_score > worst_baseline else self.params

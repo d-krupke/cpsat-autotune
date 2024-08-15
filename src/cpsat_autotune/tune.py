@@ -1,8 +1,11 @@
 import optuna
+
+from .cpsat_parameters import explain_parameters
 from .objective import OptunaCpSatStrategy, ParameterStats
 from .metrics import MinObjective, MaxObjective, MinTimeToOptimal
 from .parameter_space import CpSatParameterSpace
 from ortools.sat.python import cp_model
+from .parameter_evaluator import ParameterEvaluator
 
 def _tune(
     objective: OptunaCpSatStrategy,
@@ -53,7 +56,7 @@ def tune_time_to_optimal(
     n_samples_per_param: int = 10,
     max_samples_per_param: int = 30,
     n_trials: int = 100,
-) -> ParameterStats:
+) -> dict:
     """
     Tune CP-SAT hyperparameters to minimize the time required to find an optimal solution.
 
@@ -82,8 +85,13 @@ def tune_time_to_optimal(
     )
 
     stats = _tune(objective, parameter_space, n_trials)
-    return stats
-
+    values = [metric.convert_to_maximization(v) for v in stats.values]
+    be = ParameterEvaluator(model=model, params=stats.cpsat_params, metric=metric, fixed_params=parameter_space.fixed_parameters, baseline_values=values)
+    selected_params =  be.evaluate()
+    print()
+    print("Explanation of selected parameters:")
+    print(explain_parameters(selected_params.keys()))
+    return selected_params
 
 def tune_for_quality_within_timelimit(
     model: cp_model.CpModel,
@@ -93,7 +101,7 @@ def tune_for_quality_within_timelimit(
     n_samples_per_param: int = 10,
     max_samples_per_param: int = 30,
     n_trials: int = 100,
-) -> ParameterStats:
+) -> dict:
     """
     Tune CP-SAT hyperparameters to maximize or minimize solution quality within a given time limit.
 
@@ -130,4 +138,10 @@ def tune_for_quality_within_timelimit(
     )
 
     stats= _tune(objective, parameter_space, n_trials)
-    return stats
+    values = [metric.convert_to_maximization(v) for v in stats.values]
+    be = ParameterEvaluator(model=model, params=stats.cpsat_params, metric=metric, fixed_params=parameter_space.fixed_parameters, baseline_values=values)
+    selected_params =  be.evaluate()
+    print()
+    print("Explanation of selected parameters:")
+    print(explain_parameters(selected_params.keys()))
+    return selected_params
