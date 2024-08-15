@@ -69,15 +69,10 @@ Here is a basic example of how to use **cpsat-autotune** to optimize the time
 required to find an optimal solution for a CP-SAT model:
 
 ```python
-from pathlib import Path
-from cpsat_autotune import (
-    tune_for_quality_within_timelimit,
-    import_model,
-    tune_time_to_optimal,
-)
+from cpsat_autotune import import_model, tune_time_to_optimal
 
-# Load your model
-model = import_model(Path("models/medium_hg.pb"))
+# Load your model from a protobuf file
+model = import_model("models/medium_hg.pb")
 
 # Tune the model to minimize the time to reach an optimal solution
 tune_time_to_optimal(
