@@ -79,16 +79,6 @@ class OptunaCpSatStrategy:
         self._baseline = []
         self._samples = defaultdict(list)
 
-    def _solve(self, solver: cp_model.CpSolver):
-        solver.parameters.random_seed = random.randint(0, 2**31 - 1)
-        time_begin = datetime.now()
-        status = solver.solve(self.model)
-        time_end = datetime.now()
-        solve_time = (time_end - time_begin).total_seconds()
-        obj = None
-        if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
-            obj = solver.objective_value
-        return self.metric(status=status, obj_value=obj, time_in_s=solve_time)
 
     def compute_baseline(self):
         """
@@ -97,7 +87,7 @@ class OptunaCpSatStrategy:
         if not self._baseline:
             print("Computing baseline")
             solver = self.parameter_space.sample(None)
-            values = [self._solve(solver) for _ in range(self.max_samples_per_param)]
+            values = [self.metric(solver=solver, model=self.model) for _ in range(self.max_samples_per_param)]
             self._samples[frozenset()].extend(values)
             self._baseline = values
             print("Baseline:", values)
@@ -125,7 +115,7 @@ class OptunaCpSatStrategy:
             )
             n_trials = max(n_trials, 0)
         for _ in range(n_trials):
-            value = self._solve(solver)
+            value = self.metric(solver=solver, model=self.model)
             self._samples[param_key].append(value)
             if value < prune_if_below:
                 # Save some time by pruning the trial if it is already worse than the baseline

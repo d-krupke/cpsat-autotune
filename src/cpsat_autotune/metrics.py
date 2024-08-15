@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
+from datetime import datetime
+import random
 from ortools.sat.python import cp_model
-from ortools.sat import cp_model_pb2
 
 
 class Metric(ABC):
@@ -11,9 +12,8 @@ class Metric(ABC):
     @abstractmethod
     def __call__(
         self,
-        status: cp_model_pb2.CpSolverStatus,
-        obj_value: float | None,
-        time_in_s: float,
+        solver: cp_model.CpSolver,
+        model: cp_model.CpModel,
     ) -> float:
         pass
 
@@ -36,10 +36,17 @@ class MaxObjective(Metric):
 
     def __call__(
         self,
-        status: cp_model_pb2.CpSolverStatus,
-        obj_value: float | None,
-        time_in_s: float,
+        solver: cp_model.CpSolver,
+        model: cp_model.CpModel,
     ) -> float:
+        solver.parameters.random_seed = random.randint(0, 2**31 - 1)
+        time_begin = datetime.now()
+        status = solver.solve(model)
+        time_end = datetime.now()
+        time_in_s = (time_end - time_begin).total_seconds()
+        obj_value = None
+        if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+            obj_value = solver.objective_value
         if obj_value is not None:
             return obj_value
         else:
@@ -57,10 +64,17 @@ class MinObjective(Metric):
 
     def __call__(
         self,
-        status: cp_model_pb2.CpSolverStatus,
-        obj_value: float | None,
-        time_in_s: float,
+        solver: cp_model.CpSolver,
+        model: cp_model.CpModel,
     ) -> float:
+        solver.parameters.random_seed = random.randint(0, 2**31 - 1)
+        time_begin = datetime.now()
+        status = solver.solve(model)
+        time_end = datetime.now()
+        time_in_s = (time_end - time_begin).total_seconds()
+        obj_value = None
+        if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+            obj_value = solver.objective_value
         if obj_value is not None:
             return -obj_value
         else:
@@ -81,10 +95,17 @@ class MinTimeToOptimal(Metric):
 
     def __call__(
         self,
-        status: cp_model_pb2.CpSolverStatus,
-        obj_value: float | None,
-        time_in_s: float,
+        solver: cp_model.CpSolver,
+        model: cp_model.CpModel,
     ) -> float:
+        solver.parameters.random_seed = random.randint(0, 2**31 - 1)
+        time_begin = datetime.now()
+        status = solver.solve(model)
+        time_end = datetime.now()
+        time_in_s = (time_end - time_begin).total_seconds()
+        obj_value = None
+        if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+            obj_value = solver.objective_value
         if status == cp_model.OPTIMAL:
             return -time_in_s
         else:
