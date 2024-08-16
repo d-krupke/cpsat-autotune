@@ -1,25 +1,25 @@
+import logging
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Dict, Iterable, Union
 from .caching_solver import CachingScorer, MultiResult
-
-
 from .metrics import Comparison, Metric
 
-
-def log(message: str) -> None:
-    """
-    Logs a message to the console.
-    """
-    print(message)
-
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,  # Set the log level to INFO (can be adjusted to DEBUG for more verbosity)
+    format="%(asctime)s - %(levelname)s - %(message)s",  # Log format
+    handlers=[
+        logging.StreamHandler()  # StreamHandler logs to console, add more handlers as needed
+    ]
+)
+logger = logging.getLogger(__name__)
 
 @dataclass
 class EvaluationResult:
     """
     Data class that stores the results of the parameter evaluation.
     """
-
     optimized_params: Dict[str, Union[int, bool, float, list, tuple]]
     contribution: Dict[str, float]
     optimized_score: MultiResult
@@ -46,6 +46,7 @@ class ParameterEvaluator:
         self.results = defaultdict(list)
         self.n_samples_for_verification = n_samples_for_verification
         self.n_samples_for_trial = n_samples_for_trial
+        logger.info("ParameterEvaluator initialized with params: %s", params)
 
     def _generate_variants(
         self, params: Dict[str, Union[int, bool, float, list, tuple]]
@@ -61,8 +62,9 @@ class ParameterEvaluator:
         """
         Evaluates the impact of excluding a single parameter on the model's performance.
         """
-        log(f"Evaluating resetting parameter '{key}' to default...")
+        logger.info("Evaluating resetting parameter '%s' to default...", key)
         score = self.scorer.evaluate(params, num_runs=self.n_samples_for_trial)
+        logger.debug("Score for parameter '%s': %s", key, score.mean())
         return score.mean()
 
     def evaluate(self) -> EvaluationResult:
@@ -71,9 +73,7 @@ class ParameterEvaluator:
         the optimized set of parameters, and returns an EvaluationResult object
         containing the results.
         """
-        log(
-            "Checking which parameter changes obtained by the hyperparameter optimization are essential..."
-        )
+        logger.info("Starting evaluation of parameter importance...")
         optuna_baseline = self.scorer.evaluate(
             self.params, num_runs=self.n_samples_for_verification
         )
@@ -89,13 +89,12 @@ class ParameterEvaluator:
                 Comparison.EQUAL,
                 Comparison.BETTER,
             ):
-                # The score did not degrade. Note: We compare best to worst to be conservative regarding deviating from the default.
-                log(
-                    f"Seems like we can drop parameter '{key}' from the optimized parameters."
+                logger.info(
+                    "Parameter '%s' can be dropped from the optimized parameters.", key
                 )
                 continue
             else:
-                log(f"The parameter '{key}' seems to be essential for the performance.")
+                logger.info("Parameter '%s' is essential for performance.", key)
                 optimized_params[key] = self.params[key]
                 diffs[key] = abs(optuna_baseline.mean() - score_wo_key)
 
@@ -107,7 +106,7 @@ class ParameterEvaluator:
         optimized_score = self.scorer.evaluate(
             optimized_params, num_runs=self.n_samples_for_verification
         )
-        print("optimized_score", optimized_score)
+        logger.debug("Optimized score: %s", optimized_score)
 
         if (
             self.metric.comp(
@@ -115,15 +114,16 @@ class ParameterEvaluator:
             )
             == Comparison.BETTER
         ):
-            # revert to initial parameters as the seems to be some difficult correlations
-            log(
-                "The final evaluation indicates that dropping all of the seemingly uninfluential parameters did worsen the performance. Reverting to the initial parameters."
+            # Revert to initial parameters as there seems to be some difficult correlations
+            logger.warning(
+                "Final evaluation shows worsened performance. Reverting to initial parameters."
             )
             optimized_params = self.params
             optimized_score = optuna_baseline
             significance = {}
 
         # Convert the metrics before storing them in the result
+        logger.info("Evaluation complete. Returning results.")
         return EvaluationResult(
             optimized_params=optimized_params,
             contribution=significance,

@@ -1,6 +1,6 @@
+import logging
 import optuna
 from ortools.sat.python import cp_model
-
 from .print_result import print_results
 from .caching_solver import CachingScorer, MultiResult
 from .objective import OptunaCpSatStrategy
@@ -8,6 +8,15 @@ from .metrics import Metric, MinObjective, MaxObjective, MinTimeToOptimal
 from .parameter_space import CpSatParameterSpace
 from .parameter_evaluator import ParameterEvaluator
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 
 def _tune(
     parameter_space: CpSatParameterSpace,
@@ -28,11 +37,16 @@ def _tune(
     Returns:
         The best parameters found during the tuning process.
     """
+    logger.info("Starting hyperparameter tuning with %s trials.", n_trials)
     scorer = CachingScorer(model, metric)
 
     default_baseline = scorer.evaluate({}, n_samples_for_verification)
-
-    print(f"Baseline: min={default_baseline.min()}, mean={default_baseline.mean()}, max={default_baseline.max()}")
+    logger.info(
+        "Baseline evaluation completed: min=%s, mean=%s, max=%s",
+        default_baseline.min(),
+        default_baseline.mean(),
+        default_baseline.max()
+    )
 
     objective = OptunaCpSatStrategy(
         parameter_space,
@@ -41,7 +55,6 @@ def _tune(
         n_samples_for_verification=n_samples_for_verification,
     )
 
-    
     # Initialize the study with the given parameter space and objective
     default_params = parameter_space.get_default_params_for_optuna()
     study = optuna.create_study(
@@ -50,14 +63,18 @@ def _tune(
     study.enqueue_trial(default_params)
 
     # Optimize the study with the objective function
+    logger.info("Starting Optuna optimization.")
     study.optimize(objective, n_trials=n_trials)
 
-    # Retrieve and print the best parameters
+    # Retrieve and log the best parameters
     best_params = objective.best_params()
-    print(f"Best parameters: {best_params.params}. Score: {best_params.mean()}")
-    # _print_best_params(best_params, diff_to_baseline, significant)
+    logger.info(
+        "Best parameters found: %s. Score: %s",
+        best_params.params,
+        best_params.mean()
+    )
 
-    # Return the best parameters and performance results
+    # Evaluate the best parameters
     be = ParameterEvaluator(
         params=best_params.params,
         scorer=scorer,
@@ -67,6 +84,8 @@ def _tune(
     )
     result = be.evaluate()
     print_results(result, default_baseline)
+    
+    logger.info("Hyperparameter tuning completed.")
     return best_params
 
 
@@ -90,15 +109,17 @@ def tune_time_to_optimal(
         max_samples_per_param: The maximum number of samples per parameter allowed before using the mean to improve runtime.
         n_trials: The number of trials to execute in the tuning process.
     """
+    logger.info("Starting tuning for time to optimal.")
     parameter_space = CpSatParameterSpace()
     parameter_space.drop_parameter("use_lns_only")  # never useful for this metric
     parameter_space.drop_parameter("max_time_in_seconds")
+    
     if relative_gap_limit > 0.0:
         parameter_space.drop_parameter("relative_gap_tolerance")
 
     metric = MinTimeToOptimal(max_time_in_seconds=max_time_in_seconds, relative_gap_limit=relative_gap_limit)
 
-    return _tune(
+    result_params = _tune(
         parameter_space=parameter_space,
         model=model,
         metric=metric,
@@ -106,6 +127,9 @@ def tune_time_to_optimal(
         n_samples_for_trial=n_samples_for_trial,
         n_trials=n_trials
     ).params
+
+    logger.info("Tuning for time to optimal completed.")
+    return result_params
 
 
 def tune_for_quality_within_timelimit(
@@ -132,6 +156,7 @@ def tune_for_quality_within_timelimit(
     Raises:
         ValueError: If the `direction` argument is not 'maximize' or 'minimize'.
     """
+    logger.info("Starting tuning for quality within time limit. Direction: %s", direction)
     parameter_space = CpSatParameterSpace()
     parameter_space.drop_parameter("max_time_in_seconds")
 
@@ -140,10 +165,12 @@ def tune_for_quality_within_timelimit(
     elif direction == "minimize":
         metric = MinObjective(obj_for_timeout=obj_for_timeout, max_time_in_seconds=max_time_in_seconds)
     else:
+        logger.error("Invalid direction '%s'. Must be 'maximize' or 'minimize'.", direction)
         raise ValueError(
-            f"Invalid direction '{direction}'. Must be 'maximize' or 'minimize'."
+            "Invalid direction '%s'. Must be 'maximize' or 'minimize'." % direction
         )
-    return _tune(
+
+    result_params = _tune(
         parameter_space=parameter_space,
         model=model,
         metric=metric,
@@ -151,3 +178,6 @@ def tune_for_quality_within_timelimit(
         n_samples_for_trial=n_samples_for_trial,
         n_trials=n_trials
     ).params
+
+    logger.info("Tuning for quality within time limit completed.")
+    return result_params

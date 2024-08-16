@@ -77,9 +77,9 @@ model = import_model("models/medium_hg.pb")
 # Tune the model to minimize the time to reach an optimal solution
 best = tune_time_to_optimal(
     model,
-    timelimit_in_s=6,  # Enter a time limit slightly above what the solver with default parameters needs
-    n_samples_per_param=5,  # The higher the number, the more accurate the tuning, but the longer it takes
-    max_samples_per_param=10,  # After this number of samples for a parameter set, we just take the average from the history
+    max_time_in_seconds=3,  # Enter a time limit slightly above what the solver with default parameters needs
+    n_samples_for_trial=5,  # Number of samples for each trial
+    n_samples_for_verification=20,  # Number of samples for each statistically relevant comparison.
     n_trials=50,  # Number of trials to run with Optuna
 )
 ```

@@ -1,9 +1,20 @@
+import logging
 from abc import ABC, abstractmethod
 from datetime import datetime
 from enum import Enum
 import random
 from typing import Iterable, Callable, TypeVar, Any
 from ortools.sat.python import cp_model
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 
 T = TypeVar('T')
 
@@ -19,8 +30,10 @@ class Metric(ABC):
     """
     def __init__(self, direction: str):
         if direction not in ("minimize", "maximize"):
+            logger.error("Invalid direction '%s'. Must be 'minimize' or 'maximize'.", direction)
             raise ValueError("Direction must be either 'minimize' or 'maximize'.")
         self.direction = direction
+        logger.info("Initialized Metric with direction: %s", direction)
 
     @abstractmethod
     def __call__(
@@ -34,19 +47,24 @@ class Metric(ABC):
         """
         Returns the best value according to the metric's direction.
         """
-        return max(values, key=key if self.direction == "maximize" else (lambda x: -key(x)))
+        best_value = max(values, key=key if self.direction == "maximize" else (lambda x: -key(x)))
+        logger.debug("Best value found: %s", best_value)
+        return best_value
         
     def worst(self, values: Iterable[T], key: Callable[[T], Any] = lambda x: x) -> T:
         """
         Returns the worst value according to the metric's direction.
         """
-        return min(values, key=key if self.direction == "maximize" else (lambda x: -key(x)))
+        worst_value = min(values, key=key if self.direction == "maximize" else (lambda x: -key(x)))
+        logger.debug("Worst value found: %s", worst_value)
+        return worst_value
         
     def comp(self, a: T, b: T, key: Callable[[T], Any] = lambda x: x) -> Comparison:
         """
         Compares two values according to the metric's direction.
         """
         ka, kb = key(a), key(b)
+        logger.debug("Comparing values: %s vs %s", ka, kb)
         if ka == kb:
             return Comparison.EQUAL
         if self.direction == "maximize":
@@ -55,7 +73,6 @@ class Metric(ABC):
             else:
                 return Comparison.WORSE
         else:
-            # minimize
             if ka < kb:
                 return Comparison.BETTER
             else:
@@ -88,14 +105,15 @@ class MaxObjective(Metric):
     ) -> float:
         solver.parameters.random_seed = random.randint(0, 2**31 - 1)
         solver.parameters.max_time_in_seconds = self.max_time_in_seconds
+        logger.info("Starting solver with random_seed: %s, max_time_in_seconds: %s", solver.parameters.random_seed, self.max_time_in_seconds)
         status = solver.solve(model)
         obj_value = None
         if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
             obj_value = solver.objective_value
-        if obj_value is not None:
-            return obj_value
+            logger.info("Solver found a solution with objective value: %s", obj_value)
         else:
-            return self.obj_for_timeout
+            logger.warning("Solver did not find a feasible solution within the time limit.")
+        return obj_value if obj_value is not None else self.obj_for_timeout
         
     def knockout_score(self) -> float:
         return self.obj_for_timeout
@@ -119,18 +137,18 @@ class MinObjective(Metric):
     ) -> float:
         solver.parameters.random_seed = random.randint(0, 2**31 - 1)
         solver.parameters.max_time_in_seconds = self.max_time_in_seconds
+        logger.info("Starting solver with random_seed: %s, max_time_in_seconds: %s", solver.parameters.random_seed, self.max_time_in_seconds)
         status = solver.solve(model)
         obj_value = None
         if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
             obj_value = solver.objective_value
-        if obj_value is not None:
-            return obj_value
+            logger.info("Solver found a solution with objective value: %s", obj_value)
         else:
-            return self.obj_for_timeout
+            logger.warning("Solver did not find a feasible solution within the time limit.")
+        return obj_value if obj_value is not None else self.obj_for_timeout
         
     def knockout_score(self) -> float:
         return self.obj_for_timeout
-
 
 
 class MinTimeToOptimal(Metric):
@@ -163,13 +181,17 @@ class MinTimeToOptimal(Metric):
             solver.parameters.relative_gap_limit = self.relative_gap_limit
         if self.absolute_gap_limit > 0.0:
             solver.parameters.absolute_gap_limit = self.absolute_gap_limit
+        logger.info("Starting solver with random_seed: %s, max_time_in_seconds: %s, relative_gap_limit: %s, absolute_gap_limit: %s",
+                     solver.parameters.random_seed, self.max_time_in_seconds, self.relative_gap_limit, self.absolute_gap_limit)
         time_begin = datetime.now()
         status = solver.solve(model)
         time_end = datetime.now()
         time_in_s = (time_end - time_begin).total_seconds()
+        logger.info("Solver completed in %s seconds with status: %s", time_in_s, status)
         if status == cp_model.OPTIMAL:
             return time_in_s
         else:
+            logger.warning("Solver did not find an optimal solution within the time limit.")
             return self.max_time_in_seconds * self.par_multiplier
         
     def knockout_score(self) -> float:

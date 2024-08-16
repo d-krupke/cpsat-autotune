@@ -1,11 +1,23 @@
+import logging
 from dataclasses import dataclass
 import numpy as np
 from ortools.sat.python import cp_model
 from .metrics import Comparison, Metric
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,  # Set the log level
+    format="%(asctime)s - %(levelname)s - %(message)s",  # Log format
+    handlers=[
+        logging.StreamHandler()  # You can add more handlers (e.g., file handlers) as needed
+    ]
+)
 
 @dataclass
 class MultiResult:
+    """
+    Instead of just the mean score, we store all samples to compute additional statistics.
+    """
     scores: list[float]
     params: dict[str, float | int | bool | list | tuple]
 
@@ -37,10 +49,15 @@ class MultiResult:
         return MultiResult(params=self.params, scores=[metric.worst(self)]*len(self.scores))
     
     def __repr__(self) -> str:
-        return f"MultiResult(scores={self.scores}, params={self.params})"
+        return "MultiResult(scores=%s, params=%s)" % (self.scores, self.params)
 
 
 class CachingScorer:
+    """
+    Computing the score for a given set of parameters involves running the solver multiple times.
+    As this can be computationally expensive, the results are cached to avoid redundant computations.
+    This can also be used later to get better statistics about the performance of the parameters.
+    """
     def __init__(
         self,
         model: cp_model.CpModel,
@@ -68,14 +85,17 @@ class CachingScorer:
         param_set = frozenset(
             (key, _replace_lists(value)) for key, value in params.items()
         )
+        logging.debug("Created key from params: %s", param_set)
         return param_set
 
     def _remove_fixed_params(
         self, params: dict[str, float | int | bool | list | tuple]
     ) -> dict[str, float | int | bool | list | tuple]:
-        return {
+        cleaned_params = {
             key: value for key, value in params.items() if key not in self.fixed_params
         }
+        logging.debug("Removed fixed params: %s", cleaned_params)
+        return cleaned_params
 
     def _prepare_solver(
         self, params: dict[str, float | int | bool | list | tuple]
@@ -91,6 +111,7 @@ class CachingScorer:
                 getattr(solver.parameters, key).extend(value)
             else:
                 setattr(solver.parameters, key, value)
+        logging.debug("Solver prepared with params: %s", params)
         return solver
 
     def evaluate(
@@ -105,27 +126,33 @@ class CachingScorer:
             num_runs: The number of runs to average the score over.
             knockout_score: Abort early if the score is worse than this value.
         """
+        logging.info("Evaluating with params: %s, num_runs: %s, knockout_score: %s", params, num_runs, knockout_score)
         params = self._remove_fixed_params(params)
         param_key: frozenset = self._create_key_from_params(params)
         result = self._cache.get(param_key, MultiResult(scores=[], params=params))
         if len(result) >= num_runs:
+            logging.info("Returning cached result.")
             return result
         if knockout_score is not None and len(result) > 0:
-            if self.metric.comp(self.metric.worst(result), knockout_score) in (Comparison.WORSE, Comparison.EQUAL):
-                print("Returning cached knockout result")
+            worst_score = self.metric.worst(result)
+            if self.metric.comp(worst_score, knockout_score) in (Comparison.WORSE, Comparison.EQUAL):
+                logging.info("Returning cached knockout result.")
                 return result.as_knockout_result(self.metric)
         n_missing = num_runs - len(result)
         for _ in range(n_missing):
             solver = self._prepare_solver(params)
             score = self.metric(solver, self.model)
             result.scores.append(score)
+            logging.debug("Run completed with score: %s", score)
             if knockout_score is not None:
                 if self.metric.comp(score, knockout_score) in (Comparison.WORSE, Comparison.EQUAL):
                     self._cache[param_key] = result
-                    print("Returning knockout result")
+                    logging.info("Returning knockout result.")
                     return result.as_knockout_result(self.metric)
         self._cache[param_key] = result
+        logging.info("Evaluation completed and result cached.")
         return result
 
     def __iter__(self):
+        logging.debug("Iterating over cached results.")
         return iter(self._cache.values())
