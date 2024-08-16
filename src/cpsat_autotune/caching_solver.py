@@ -10,14 +10,16 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s",  # Log format
     handlers=[
         logging.StreamHandler()  # You can add more handlers (e.g., file handlers) as needed
-    ]
+    ],
 )
+
 
 @dataclass
 class MultiResult:
     """
     Instead of just the mean score, we store all samples to compute additional statistics.
     """
+
     scores: list[float]
     params: dict[str, float | int | bool | list | tuple]
 
@@ -44,10 +46,12 @@ class MultiResult:
 
     def __iter__(self):
         return iter(self.scores)
-    
+
     def as_knockout_result(self, metric: Metric) -> "MultiResult":
-        return MultiResult(params=self.params, scores=[metric.worst(self)]*len(self.scores))
-    
+        return MultiResult(
+            params=self.params, scores=[metric.worst(self)] * len(self.scores)
+        )
+
     def __repr__(self) -> str:
         return "MultiResult(scores=%s, params=%s)" % (self.scores, self.params)
 
@@ -58,6 +62,7 @@ class CachingScorer:
     As this can be computationally expensive, the results are cached to avoid redundant computations.
     This can also be used later to get better statistics about the performance of the parameters.
     """
+
     def __init__(
         self,
         model: cp_model.CpModel,
@@ -126,7 +131,12 @@ class CachingScorer:
             num_runs: The number of runs to average the score over.
             knockout_score: Abort early if the score is worse than this value.
         """
-        logging.info("Evaluating with params: %s, num_runs: %s, knockout_score: %s", params, num_runs, knockout_score)
+        logging.info(
+            "Evaluating with params: %s, num_runs: %s, knockout_score: %s",
+            params,
+            num_runs,
+            knockout_score,
+        )
         params = self._remove_fixed_params(params)
         param_key: frozenset = self._create_key_from_params(params)
         result = self._cache.get(param_key, MultiResult(scores=[], params=params))
@@ -135,7 +145,10 @@ class CachingScorer:
             return result
         if knockout_score is not None and len(result) > 0:
             worst_score = self.metric.worst(result)
-            if self.metric.comp(worst_score, knockout_score) in (Comparison.WORSE, Comparison.EQUAL):
+            if self.metric.comp(worst_score, knockout_score) in (
+                Comparison.WORSE,
+                Comparison.EQUAL,
+            ):
                 logging.info("Returning cached knockout result.")
                 return result.as_knockout_result(self.metric)
         n_missing = num_runs - len(result)
@@ -145,7 +158,10 @@ class CachingScorer:
             result.scores.append(score)
             logging.debug("Run completed with score: %s", score)
             if knockout_score is not None:
-                if self.metric.comp(score, knockout_score) in (Comparison.WORSE, Comparison.EQUAL):
+                if self.metric.comp(score, knockout_score) in (
+                    Comparison.WORSE,
+                    Comparison.EQUAL,
+                ):
                     self._cache[param_key] = result
                     logging.info("Returning knockout result.")
                     return result.as_knockout_result(self.metric)

@@ -360,8 +360,10 @@ def explain_parameters(parameters: Iterable[str]) -> str:
                 explanation += f"Parameter: {param.name}\n"
                 explanation += f"\tDefault value: {param.get_cpsat_default()}\n"
                 # Use triple quotes for multiline description and dedent if necessary
-                description = textwrap.dedent(f"""\
+                description = textwrap.dedent(
+                    f"""\
                 {param.description}
-                """).strip()
+                """
+                ).strip()
                 explanation += f"\tDescription: \n\t\t{description.replace('\n', '\n\t\t').strip()}\n\n"
     return explanation

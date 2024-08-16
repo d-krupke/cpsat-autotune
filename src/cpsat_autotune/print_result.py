@@ -9,7 +9,6 @@ from .caching_solver import MultiResult
 from .cpsat_parameters import get_parameter_by_name
 
 
-
 console = Console()
 
 
@@ -87,12 +86,12 @@ def print_results(
     fn(Rule())
 
     warning_message = """
-        The optimized parameters listed above were obtained based on a sampling approach 
-        and may not fully capture the complexities of the entire problem space. 
-        While statistical reasoning has been applied, these results should be considered 
+        The optimized parameters listed above were obtained based on a sampling approach
+        and may not fully capture the complexities of the entire problem space.
+        While statistical reasoning has been applied, these results should be considered
         as a suggestion for further evaluation rather than definitive settings.
-        
-        It is strongly recommended to validate these parameters in larger, more comprehensive 
+
+        It is strongly recommended to validate these parameters in larger, more comprehensive
         experiments before adopting them in critical applications.
         """
     fn(Panel(Markdown(warning_message), title="WARNING", style="bold yellow"))

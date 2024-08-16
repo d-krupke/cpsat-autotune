@@ -11,15 +11,17 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s",  # Log format
     handlers=[
         logging.StreamHandler()  # StreamHandler logs to console, add more handlers as needed
-    ]
+    ],
 )
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class EvaluationResult:
     """
     Data class that stores the results of the parameter evaluation.
     """
+
     optimized_params: Dict[str, Union[int, bool, float, list, tuple]]
     contribution: Dict[str, float]
     optimized_score: MultiResult
@@ -38,7 +40,7 @@ class ParameterEvaluator:
         scorer: CachingScorer,
         metric: Metric,
         n_samples_for_verification: int,
-        n_samples_for_trial: int
+        n_samples_for_trial: int,
     ) -> None:
         self.params = params
         self.scorer = scorer

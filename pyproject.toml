@@ -7,7 +7,7 @@ where = ["src"]
 
 [project]
 name = "cpsat-autotune"
-version = "0.0.3"
+version = "0.1.0"
 authors = [
     { name = "Dominik Krupke", email = "krupked@gmail.com" },
 ]
