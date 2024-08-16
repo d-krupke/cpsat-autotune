@@ -1,4 +1,5 @@
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Dict, Iterable, Union
 
@@ -23,33 +24,33 @@ class EvaluationResult:
     contribution: Dict[str, float]
     optimized_score: float
 
-    def print_results(self, default_score) -> None:
+    def print_results(self, default_score, fn: Callable = print) -> None:
         """
         Prints the evaluation results in a professional format.
         """
-        print("============================================================")
-        print("                 OPTIMIZED PARAMETERS")
-        print("============================================================")
+        fn("============================================================")
+        fn("                 OPTIMIZED PARAMETERS")
+        fn("============================================================")
         if not self.optimized_params:
-            print("No significant parameter changes were identified.")
+            fn("No significant parameter changes were identified.")
         for i, (key, value) in enumerate(self.optimized_params.items(), start=1):
             default_value = get_parameter_by_name(key).get_cpsat_default()
             description = get_parameter_by_name(key).description.strip().replace('\n', '\n\t\t')
             contribution_value = f"{self.contribution[key]:.2%}" if key in self.contribution else "<NA>"
-            print(f"\n{i}. {key}: {value}")
-            print(f"\tContribution: {contribution_value}")
-            print(f"\tDefault Value: {default_value}")
-            print(f"\tDescription:\n\t\t{description}")
+            fn(f"\n{i}. {key}: {value}")
+            fn(f"\tContribution: {contribution_value}")
+            fn(f"\tDefault Value: {default_value}")
+            fn(f"\tDescription:\n\t\t{description}")
 
-        print("------------------------------------------------------------")
-        print(f"Default Metric Value: {default_score}")
-        print(f"Optimized Metric Value: {self.optimized_score}")
-        print("------------------------------------------------------------")
+        fn("------------------------------------------------------------")
+        fn(f"Default Metric Value: {default_score}")
+        fn(f"Optimized Metric Value: {self.optimized_score}")
+        fn("------------------------------------------------------------")
         
-        print("\n============================================================")
-        print("*** WARNING ***")
-        print("============================================================")
-        print(
+        fn("\n============================================================")
+        fn("*** WARNING ***")
+        fn("============================================================")
+        fn(
             "The optimized parameters listed above were obtained based on a sampling approach "
             "and may not fully capture the complexities of the entire problem space. "
             "While statistical reasoning has been applied, these results should be considered "
@@ -57,7 +58,7 @@ class EvaluationResult:
             "It is strongly recommended to validate these parameters in larger, more comprehensive "
             "experiments before adopting them in critical applications."
         )
-        print("============================================================")
+        fn("============================================================")
 
 
 class ParameterEvaluator:
@@ -90,6 +91,14 @@ class ParameterEvaluator:
             reduced_params = {k: v for k, v in params.items() if k != key}
             yield key, reduced_params
 
+    def _evaluate_single_parameter(self, key: str, params: dict) -> float:
+        """
+        Evaluates the impact of excluding a single parameter on the model's performance.
+        """
+        log(f"Evaluating resetting parameter '{key}' to default...")
+        score = self.scorer.evaluate(params, num_runs=self.min_baseline_size)
+        return score.mean()
+
     def evaluate(self) -> EvaluationResult:
         """
         Evaluates the impact of excluding each parameter individually, identifies
@@ -98,22 +107,21 @@ class ParameterEvaluator:
         """
         log("Checking which parameter changes obtained by the hyperparameter optimization are essential...")
         optuna_baseline = self.scorer.evaluate(self.params, num_runs=self.min_baseline_size)
+        accept_as_equal = (self.metric.worst(optuna_baseline) + optuna_baseline.mean()) / 2
         print("optuna_baseline", optuna_baseline)
         optimized_params = {}
         diffs = {}
 
         for key, params in self._generate_variants(self.params):
-            log(f"Evaluating resetting parameter '{key}' to default..." )
-            score = self.scorer.evaluate(params, num_runs=1, knockout_score=self.metric.worst(optuna_baseline))
-            print("score", score)
-            if self.metric.comp(self.metric.best(score), self.metric.worst(optuna_baseline)) in (Comparison.EQUAL, Comparison.BETTER):
+            score_wo_key = self._evaluate_single_parameter(key, params)
+            if self.metric.comp(score_wo_key, accept_as_equal) in (Comparison.EQUAL, Comparison.BETTER):
                 # The score did not degrade. Note: We compare best to worst to be conservative regarding deviating from the default.
                 log(f"Seems like we can drop parameter '{key}' from the optimized parameters.")
                 continue
             else:
                 log(f"The parameter '{key}' seems to be essential for the performance.")
                 optimized_params[key] = self.params[key]
-                diffs[key] = abs(optuna_baseline.mean() - score.mean())
+                diffs[key] = abs(optuna_baseline.mean() - score_wo_key)
 
         # Calculate parameter significance
         total_diff = sum(diffs.values())
