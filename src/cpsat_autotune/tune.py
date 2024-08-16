@@ -1,11 +1,11 @@
 import optuna
+from ortools.sat.python import cp_model
 
+from .print_result import print_results
 from .caching_solver import CachingScorer, MultiResult
-
 from .objective import OptunaCpSatStrategy
 from .metrics import Metric, MinObjective, MaxObjective, MinTimeToOptimal
 from .parameter_space import CpSatParameterSpace
-from ortools.sat.python import cp_model
 from .parameter_evaluator import ParameterEvaluator
 
 
@@ -13,8 +13,8 @@ def _tune(
     parameter_space: CpSatParameterSpace,
     model: cp_model.CpModel,
     metric: Metric,
-    max_samples_per_param: int,
-    n_samples_per_param: int,
+    n_samples_for_verification: int,
+    n_samples_for_trial: int,
     n_trials: int = 100,
 ) -> MultiResult:
     """
@@ -30,15 +30,15 @@ def _tune(
     """
     scorer = CachingScorer(model, metric)
 
-    default_baseline = scorer.evaluate({}, max_samples_per_param)
+    default_baseline = scorer.evaluate({}, n_samples_for_verification)
 
     print(f"Baseline: min={default_baseline.min()}, mean={default_baseline.mean()}, max={default_baseline.max()}")
 
     objective = OptunaCpSatStrategy(
         parameter_space,
         scorer=scorer,
-        n_samples_for_trial=n_samples_per_param,
-        n_samples_for_verification=max_samples_per_param,
+        n_samples_for_trial=n_samples_for_trial,
+        n_samples_for_verification=n_samples_for_verification,
     )
 
     
@@ -62,18 +62,20 @@ def _tune(
         params=best_params.params,
         scorer=scorer,
         metric=metric,
+        n_samples_for_verification=n_samples_for_verification,
+        n_samples_for_trial=n_samples_for_trial
     )
     result = be.evaluate()
-    result.print_results(default_baseline.mean())
+    print_results(result, default_baseline)
     return best_params
 
 
 def tune_time_to_optimal(
     model: cp_model.CpModel,
-    timelimit_in_s: float,
-    opt_gap: float = 0.0,
-    n_samples_per_param: int = 10,
-    max_samples_per_param: int = 30,
+    max_time_in_seconds: float,
+    relative_gap_limit: float = 0.0,
+    n_samples_for_trial: int = 10,
+    n_samples_for_verification: int = 30,
     n_trials: int = 100,
 ) -> dict:
     """
@@ -91,28 +93,28 @@ def tune_time_to_optimal(
     parameter_space = CpSatParameterSpace()
     parameter_space.drop_parameter("use_lns_only")  # never useful for this metric
     parameter_space.drop_parameter("max_time_in_seconds")
-    if opt_gap > 0.0:
+    if relative_gap_limit > 0.0:
         parameter_space.drop_parameter("relative_gap_tolerance")
 
-    metric = MinTimeToOptimal(max_time_in_seconds=timelimit_in_s, relative_gap_limit=opt_gap)
+    metric = MinTimeToOptimal(max_time_in_seconds=max_time_in_seconds, relative_gap_limit=relative_gap_limit)
 
     return _tune(
         parameter_space=parameter_space,
         model=model,
         metric=metric,
-        max_samples_per_param=max_samples_per_param,
-        n_samples_per_param=n_samples_per_param,
+        n_samples_for_verification=n_samples_for_verification,
+        n_samples_for_trial=n_samples_for_trial,
         n_trials=n_trials
     ).params
 
 
 def tune_for_quality_within_timelimit(
     model: cp_model.CpModel,
-    timelimit_in_s: float,
+    max_time_in_seconds: float,
     obj_for_timeout: int,
     direction: str,
-    n_samples_per_param: int = 10,
-    max_samples_per_param: int = 30,
+    n_samples_for_trial: int = 10,
+    n_samples_for_verification: int = 30,
     n_trials: int = 100,
 ) -> dict:
     """
@@ -134,9 +136,9 @@ def tune_for_quality_within_timelimit(
     parameter_space.drop_parameter("max_time_in_seconds")
 
     if direction == "maximize":
-        metric = MaxObjective(obj_for_timeout=obj_for_timeout, max_time_in_seconds=timelimit_in_s)
+        metric = MaxObjective(obj_for_timeout=obj_for_timeout, max_time_in_seconds=max_time_in_seconds)
     elif direction == "minimize":
-        metric = MinObjective(obj_for_timeout=obj_for_timeout, max_time_in_seconds=timelimit_in_s)
+        metric = MinObjective(obj_for_timeout=obj_for_timeout, max_time_in_seconds=max_time_in_seconds)
     else:
         raise ValueError(
             f"Invalid direction '{direction}'. Must be 'maximize' or 'minimize'."
@@ -145,7 +147,7 @@ def tune_for_quality_within_timelimit(
         parameter_space=parameter_space,
         model=model,
         metric=metric,
-        max_samples_per_param=max_samples_per_param,
-        n_samples_per_param=n_samples_per_param,
+        n_samples_for_verification=n_samples_for_verification,
+        n_samples_for_trial=n_samples_for_trial,
         n_trials=n_trials
     ).params

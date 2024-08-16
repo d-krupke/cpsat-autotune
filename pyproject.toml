@@ -20,5 +20,5 @@ classifiers = [
     "Development Status :: 3 - Alpha",
 ]
 dependencies = [
-    "optuna", "ortools", "numpy", "scipy"
+    "optuna", "ortools", "numpy", "scipy", "rich"
 ]
