@@ -95,34 +95,34 @@ Sample output:
    Contribution: 9.71%
    Default Value: 3
    Description:
-       Sets the maximum number of iterations that the presolve phase will execute.
-               Presolve simplifies the problem by eliminating redundant constraints and variables before the main search begins.
-               More iterations can lead to a more simplified problem but at the cost of longer presolve times.
+       	Sets the maximum number of iterations that the presolve phase will execute.
+		Presolve simplifies the problem by eliminating redundant constraints and variables before the main search begins.
+		More iterations can lead to a more simplified problem but at the cost of longer presolve times.
 
 2. cp_model_probing_level: 0
    Contribution: 51.99%
    Default Value: 2
    Description:
-       Defines the intensity of probing during presolve, where variables are temporarily fixed to infer more information about the problem.
-               Higher levels of probing can result in a more simplified problem but require more computation time during presolve.
+       	Defines the intensity of probing during presolve, where variables are temporarily fixed to infer more information about the problem.
+		Higher levels of probing can result in a more simplified problem but require more computation time during presolve.
 
 3. binary_minimization_algorithm: 2
    Contribution: 24.42%
    Default Value: 1
    Description:
-       Specifies the algorithm used for binary clause minimization during conflict analysis. The options are:
-               - `0` NO_BINARY_MINIMIZATION.
-               - `1` BINARY_MINIMIZATION_FIRST
-               - `2` BINARY_MINIMIZATION_WITH_REACHABILITY
-               - `3` EXPERIMENTAL_BINARY_MINIMIZATION
-               - `4` BINARY_MINIMIZATION_FIRST_WITH_TRANSITIVE_REDUCTION
+       	Specifies the algorithm used for binary clause minimization during conflict analysis. The options are:
+		- `0` NO_BINARY_MINIMIZATION.
+		- `1` BINARY_MINIMIZATION_FIRST
+		- `2` BINARY_MINIMIZATION_WITH_REACHABILITY
+		- `3` EXPERIMENTAL_BINARY_MINIMIZATION
+		- `4` BINARY_MINIMIZATION_FIRST_WITH_TRANSITIVE_REDUCTION
 
 4. max_all_diff_cut_size: 32
    Contribution: 13.88%
    Default Value: 64
    Description:
-       Limits the size of "all different" constraints used when generating cuts.
-               All-different constraints ensure that a set of variables takes distinct values. This parameter controls the balance between reducing the search space and the computational cost of generating cuts.
+       	Limits the size of "all different" constraints used when generating cuts.
+		All-different constraints ensure that a set of variables takes distinct values. This parameter controls the balance between reducing the search space and the computational cost of generating cuts.
 ------------------------------------------------------------
 Default Metric Value: 1.5331676
 Optimized Metric Value: 0.544175

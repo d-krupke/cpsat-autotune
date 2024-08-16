@@ -1,4 +1,3 @@
-from ortools.sat.python import cp_model
 import optuna
 from .cpsat_parameters import CPSAT_PARAMETERS
 
@@ -12,43 +11,31 @@ class CpSatParameterSpace:
     """
 
     def __init__(self):
-        self.fixed_parameters = {}
         self.tunable_parameters = {param.name: param for param in CPSAT_PARAMETERS}
 
-    def fix_parameter(self, parameter: str, value=None):
+    def drop_parameter(self, parameter: str):
         """
-        Will fix a parameter. If the value is None, the default of CP-SAT will be used.
-        The value must be for CP-SAT, not for Optuna.
+        Will remove a parameter from the parameter space.
         """
         self.tunable_parameters.pop(parameter, None)
-        if value is not None:
-            self.fixed_parameters[parameter] = value
 
     def sample(
         self,
         trial: optuna.Trial | optuna.trial.FixedTrial | dict | None,
-        solver: cp_model.CpSolver | None = None,
-    ) -> cp_model.CpSolver:
+    ) -> dict[str, float | int | bool | list | tuple]:
         """
-        Returns a configured CP-SAT solver for a trial by Optuna. If no trial is given, the default solver is returned.
+        Returns a sample of the parameters for CP-SAT.
         """
-        solver = cp_model.CpSolver() if solver is None else solver
-        for parameter, value in self.fixed_parameters.items():
-            setattr(solver.parameters, parameter, value)
         if trial is None:
-            return solver
+            return {}
         if isinstance(trial, dict):
             trial = optuna.trial.FixedTrial(trial)
+        params = {}
         for parameter in self.tunable_parameters.values():
-            if parameter.name not in self.fixed_parameters:
-                value = parameter.sample(trial)
-                if value != parameter.get_cpsat_default():
-                    if isinstance(value, list):
-                        getattr(solver.parameters, parameter.name).extend(value)
-
-                    else:
-                        setattr(solver.parameters, parameter.name, value)
-        return solver
+            value = parameter.sample(trial)
+            if value != parameter.get_cpsat_default():
+                params[parameter.name] = value
+        return params
 
     def get_default_params_for_optuna(self):
         """
@@ -58,12 +45,6 @@ class CpSatParameterSpace:
         for param in self.tunable_parameters.values():
             default_params.update(param.get_optuna_default())
         return default_params
-
-    def build_solver_for_params(self, cpsat_params: dict):
-        solver = cp_model.CpSolver()
-        for parameter, value in cpsat_params.items():
-            setattr(solver.parameters, parameter, value)
-        return solver
 
     def get_cpsat_params_from_trial(self, trial: optuna.trial.FixedTrial) -> dict:
         """

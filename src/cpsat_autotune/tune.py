@@ -1,17 +1,22 @@
 import optuna
 
-from .objective import OptunaCpSatStrategy, ParameterStats
-from .metrics import MinObjective, MaxObjective, MinTimeToOptimal
+from .caching_solver import CachingScorer, MultiResult
+
+from .objective import OptunaCpSatStrategy
+from .metrics import Metric, MinObjective, MaxObjective, MinTimeToOptimal
 from .parameter_space import CpSatParameterSpace
 from ortools.sat.python import cp_model
 from .parameter_evaluator import ParameterEvaluator
 
 
 def _tune(
-    objective: OptunaCpSatStrategy,
     parameter_space: CpSatParameterSpace,
+    model: cp_model.CpModel,
+    metric: Metric,
+    max_samples_per_param: int,
+    n_samples_per_param: int,
     n_trials: int = 100,
-) -> ParameterStats:
+) -> MultiResult:
     """
     Perform hyperparameter tuning using Optuna.
 
@@ -23,10 +28,24 @@ def _tune(
     Returns:
         The best parameters found during the tuning process.
     """
+    scorer = CachingScorer(model, metric)
+
+    default_baseline = scorer.evaluate({}, max_samples_per_param)
+
+    print(f"Baseline: min={default_baseline.min()}, mean={default_baseline.mean()}, max={default_baseline.max()}")
+
+    objective = OptunaCpSatStrategy(
+        parameter_space,
+        scorer=scorer,
+        n_samples_for_trial=n_samples_per_param,
+        n_samples_for_verification=max_samples_per_param,
+    )
+
+    
     # Initialize the study with the given parameter space and objective
     default_params = parameter_space.get_default_params_for_optuna()
     study = optuna.create_study(
-        direction="maximize", sampler=optuna.samplers.TPESampler()
+        direction=objective.scorer.metric.direction, sampler=optuna.samplers.TPESampler()
     )
     study.enqueue_trial(default_params)
 
@@ -34,19 +53,19 @@ def _tune(
     study.optimize(objective, n_trials=n_trials)
 
     # Retrieve and print the best parameters
-    best_stats = objective.best_params()
-    print(best_stats.as_text())
+    best_params = objective.best_params()
+    print(f"Best parameters: {best_params.params}. Score: {best_params.mean()}")
     # _print_best_params(best_params, diff_to_baseline, significant)
 
-    # Evaluate parameter subsets and print if relevant
-    for i in range(1, best_stats.changes):
-        best_stats = objective.best_params(i)
-        if best_stats.changes == i:
-            print(best_stats.as_text())
-    print("Baseline:")
-    print(objective.get_baseline().as_text())
     # Return the best parameters and performance results
-    return best_stats
+    be = ParameterEvaluator(
+        params=best_params.params,
+        scorer=scorer,
+        metric=metric,
+    )
+    result = be.evaluate()
+    result.print_results(default_baseline.mean())
+    return best_params
 
 
 def tune_time_to_optimal(
@@ -70,33 +89,21 @@ def tune_time_to_optimal(
         n_trials: The number of trials to execute in the tuning process.
     """
     parameter_space = CpSatParameterSpace()
-    parameter_space.fix_parameter("use_lns_only", False)  # never useful for this metric
-    parameter_space.fix_parameter("max_time_in_seconds", timelimit_in_s)
+    parameter_space.drop_parameter("use_lns_only")  # never useful for this metric
+    parameter_space.drop_parameter("max_time_in_seconds")
     if opt_gap > 0.0:
-        parameter_space.fix_parameter("relative_gap_tolerance", opt_gap)
+        parameter_space.drop_parameter("relative_gap_tolerance")
 
-    metric = MinTimeToOptimal(obj_for_timeout=int(10 * timelimit_in_s))
-    objective = OptunaCpSatStrategy(
-        model,
-        parameter_space,
-        metric=metric,
-        n_samples_per_param=n_samples_per_param,
-        max_samples_per_param=max_samples_per_param,
-    )
+    metric = MinTimeToOptimal(max_time_in_seconds=timelimit_in_s, relative_gap_limit=opt_gap)
 
-    stats = _tune(objective, parameter_space, n_trials)
-    values = [metric.convert_to_maximization(v) for v in stats.values]
-    be = ParameterEvaluator(
+    return _tune(
+        parameter_space=parameter_space,
         model=model,
-        params=stats.cpsat_params,
-        default_score=metric.convert_to_maximization(objective.get_baseline().mean),
         metric=metric,
-        fixed_params=parameter_space.fixed_parameters,
-        baseline_values=values,
-    )
-    result = be.evaluate()
-    result.print_results()
-    return result.optimized_params
+        max_samples_per_param=max_samples_per_param,
+        n_samples_per_param=n_samples_per_param,
+        n_trials=n_trials
+    ).params
 
 
 def tune_for_quality_within_timelimit(
@@ -124,35 +131,21 @@ def tune_for_quality_within_timelimit(
         ValueError: If the `direction` argument is not 'maximize' or 'minimize'.
     """
     parameter_space = CpSatParameterSpace()
-    parameter_space.fix_parameter("max_time_in_seconds", timelimit_in_s)
+    parameter_space.drop_parameter("max_time_in_seconds")
 
     if direction == "maximize":
-        metric = MaxObjective(obj_for_timeout)
+        metric = MaxObjective(obj_for_timeout=obj_for_timeout, max_time_in_seconds=timelimit_in_s)
     elif direction == "minimize":
-        metric = MinObjective(obj_for_timeout)
+        metric = MinObjective(obj_for_timeout=obj_for_timeout, max_time_in_seconds=timelimit_in_s)
     else:
         raise ValueError(
             f"Invalid direction '{direction}'. Must be 'maximize' or 'minimize'."
         )
-
-    objective = OptunaCpSatStrategy(
-        model,
-        parameter_space,
-        metric=metric,
-        n_samples_per_param=n_samples_per_param,
-        max_samples_per_param=max_samples_per_param,
-    )
-
-    stats = _tune(objective, parameter_space, n_trials)
-    values = [metric.convert_to_maximization(v) for v in stats.values]
-    be = ParameterEvaluator(
+    return _tune(
+        parameter_space=parameter_space,
         model=model,
-        params=stats.cpsat_params,
-        default_score=metric.convert_to_maximization(objective.get_baseline().mean),
         metric=metric,
-        fixed_params=parameter_space.fixed_parameters,
-        baseline_values=values,
-    )
-    result = be.evaluate()
-    result.print_results()
-    return result.optimized_params
+        max_samples_per_param=max_samples_per_param,
+        n_samples_per_param=n_samples_per_param,
+        n_trials=n_trials
+    ).params
