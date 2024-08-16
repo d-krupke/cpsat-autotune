@@ -347,23 +347,3 @@ def get_parameter_by_name(name: str) -> CpSatParameter:
         if param.name == name:
             return param
     raise KeyError(f"Parameter '{name}' not found.")
-
-
-def explain_parameters(parameters: Iterable[str]) -> str:
-    """
-    Returns a detailed explanation of the given parameters.
-    """
-    explanation = ""
-    for parameter in parameters:
-        for param in CPSAT_PARAMETERS:
-            if param.name == parameter:
-                explanation += f"Parameter: {param.name}\n"
-                explanation += f"\tDefault value: {param.get_cpsat_default()}\n"
-                # Use triple quotes for multiline description and dedent if necessary
-                description = textwrap.dedent(
-                    f"""\
-                {param.description}
-                """
-                ).strip()
-                explanation += f"\tDescription: \n\t\t{description.replace('\n', '\n\t\t').strip()}\n\n"
-    return explanation
