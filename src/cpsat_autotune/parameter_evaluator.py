@@ -1,16 +1,69 @@
 from collections import defaultdict
+from dataclasses import dataclass, field
 import numpy as np
 from typing import Dict, Iterable, Union
 from ortools.sat.python import cp_model
 
+from .cpsat_parameters import get_parameter_by_name
+
 from .metrics import Metric
+
+def log(message: str) -> None:
+    """
+    Logs a message to the console.
+    """
+    print(message)
+
+@dataclass
+class EvaluationResult:
+    """
+    Data class that stores the results of the parameter evaluation.
+    """
+    optimized_params: Dict[str, Union[int, bool, float, list, tuple]]
+    contribution: Dict[str, float]
+    default_score: float
+    optimized_score: float
+
+    def print_results(self) -> None:
+        """
+        Prints the evaluation results in a professional format.
+        """
+        print("============================================================")
+        print("                 OPTIMIZED PARAMETERS")
+        print("============================================================")
+        for i, (key, value) in enumerate(self.optimized_params.items(), start=1):
+            default_value = get_parameter_by_name(key).get_cpsat_default()
+            description = get_parameter_by_name(key).description.strip().replace('\n', '\n\t\t')
+            contribution_value = f"{self.contribution[key]:.2%}" if key in self.contribution else "<NA>"
+            print(f"\n{i}. {key}: {value}")
+            print(f"\tContribution: {contribution_value}")
+            print(f"\tDefault Value: {default_value}")
+            print(f"\tDescription:\n\t\t{description}")
+
+        print("------------------------------------------------------------")
+        print(f"Default Metric Value: {self.default_score}")
+        print(f"Optimized Metric Value: {self.optimized_score}")
+        print("------------------------------------------------------------")
+        
+        print("\n============================================================")
+        print("*** WARNING ***")
+        print("============================================================")
+        print(
+            "The optimized parameters listed above were obtained based on a sampling approach "
+            "and may not fully capture the complexities of the entire problem space. "
+            "While statistical reasoning has been applied, these results should be considered "
+            "as a suggestion for further evaluation rather than definitive settings.\n"
+            "It is strongly recommended to validate these parameters in larger, more comprehensive "
+            "experiments before adopting them in critical applications."
+        )
+        print("============================================================")
 
 
 class ParameterEvaluator:
     """
     Evaluates the impact of parameter changes on the model's performance.
-    This class identifies which parameters are essential and determines whether
-    the suggested parameters offer significant improvements over the defaults.
+    Identifies essential parameters and determines whether suggested parameters
+    offer significant improvements over the defaults.
     """
 
     def __init__(
@@ -19,7 +72,8 @@ class ParameterEvaluator:
         params: Dict[str, Union[int, bool, float, list, tuple]],
         fixed_params: Dict[str, Union[int, bool, float, list, tuple]],
         metric: Metric,
-        baseline_values: list[float]|None = None,
+        default_score: float,
+        baseline_values: list[float] | None = None,
         min_baseline_size: int = 10,
     ) -> None:
         self.model = model
@@ -28,7 +82,8 @@ class ParameterEvaluator:
         self.metric = metric
         self.results = defaultdict(list)
         self.baseline_scores = baseline_values if baseline_values else []
-        self.min_baseline_size = min_baseline_size 
+        self.min_baseline_size = min_baseline_size
+        self.default_score = default_score
 
     def _initialize_solver(
         self, params: Dict[str, Union[int, bool, float, list, tuple]]
@@ -62,50 +117,53 @@ class ParameterEvaluator:
         """
         return self.metric(solver, self.model)
 
-    def evaluate(self) -> Dict[str, Union[int, bool, float, list, tuple]]:
+    def evaluate(self) -> EvaluationResult:
         """
         Evaluates the impact of excluding each parameter individually, identifies
-        the optimized set of parameters, and returns the optimal parameters.
+        the optimized set of parameters, and returns an EvaluationResult object
+        containing the results.
         """
+        log("Checking which parameter changes obtained by the hyperparameter optimization are essential...")
         # Baseline evaluation with multiple runs to assess variance
         while len(self.baseline_scores) < self.min_baseline_size:
             self.baseline_scores.append(
                 self._evaluate_solver(self._initialize_solver(self.params))
             )
         baseline_avg = float(np.mean(self.baseline_scores))
-        worst_baseline = min(self.baseline_scores)  # worst performance in the baseline
+        worst_baseline = min(self.baseline_scores)
 
-        print("Baseline:", self.metric.convert(baseline_avg))
-        print("Dropping all parameter that are not required to be better than", self.metric.convert(worst_baseline))
-
-        # Evaluate the impact of each parameter
         optimized_params = {}
         diffs = {}
 
         for key, solver in self._generate_variants(self.params):
+            log(f"Evaluating resetting parameter '{key}' to default..." )
             score = self._evaluate_solver(solver)
-            if score >= worst_baseline: 
-                # performance is still not worse than the worst baseline
-                # so probably the parameter is not essential
-                print(f"\tDrop {key}: {self.metric.convert(score)}")
+            if score >= worst_baseline:
+                log(f"Seems like we can drop parameter '{key}' from the optimized parameters.")
+                continue
             else:
-                print(f"\tKeep {key}: {self.metric.convert(score)}")
+                log(f"The parameter '{key}' seems to be essential for the performance.")
                 optimized_params[key] = self.params[key]
                 diffs[key] = abs(baseline_avg - score)
 
-        # Calculate and display parameter significance
+        # Calculate parameter significance
         total_diff = sum(diffs.values())
-        significance = [(key, diff / total_diff) for key, diff in diffs.items()]
-        significance.sort(key=lambda x: x[1], reverse=True)
-
-        print("Parameter Significance:")
-        for key, sig in significance:
-            print(f"\t{key}: {sig:.2%}")
+        significance = {key: diff / total_diff for key, diff in diffs.items()}
 
         # Final evaluation with optimized parameters
         optimized_score = self._evaluate_solver(self._initialize_solver(optimized_params))
-        print("Optimized:", self.metric.convert(optimized_score))
-        print("Optimal Parameters:", optimized_params)
 
-        # Return the most suitable parameters
-        return optimized_params if optimized_score > worst_baseline else self.params
+        if optimized_score < worst_baseline:
+            # revert to initial parameters as the seems to be some difficult correlations
+            log("The final evaluation indicates that dropping all of the seemingly uninfluential parameters did worsen the performance. Reverting to the initial parameters.")
+            optimized_params = self.params
+            optimized_score = baseline_avg
+            significance = {}
+
+        # Convert the metrics before storing them in the result
+        return EvaluationResult(
+            optimized_params=optimized_params,
+            contribution=significance,
+            default_score=self.metric.convert(self.default_score),
+            optimized_score=self.metric.convert(optimized_score),
+        )

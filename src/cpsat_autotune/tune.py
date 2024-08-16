@@ -1,11 +1,11 @@
 import optuna
 
-from .cpsat_parameters import explain_parameters
 from .objective import OptunaCpSatStrategy, ParameterStats
 from .metrics import MinObjective, MaxObjective, MinTimeToOptimal
 from .parameter_space import CpSatParameterSpace
 from ortools.sat.python import cp_model
 from .parameter_evaluator import ParameterEvaluator
+
 
 def _tune(
     objective: OptunaCpSatStrategy,
@@ -36,7 +36,7 @@ def _tune(
     # Retrieve and print the best parameters
     best_stats = objective.best_params()
     print(best_stats.as_text())
-    #_print_best_params(best_params, diff_to_baseline, significant)
+    # _print_best_params(best_params, diff_to_baseline, significant)
 
     # Evaluate parameter subsets and print if relevant
     for i in range(1, best_stats.changes):
@@ -86,12 +86,18 @@ def tune_time_to_optimal(
 
     stats = _tune(objective, parameter_space, n_trials)
     values = [metric.convert_to_maximization(v) for v in stats.values]
-    be = ParameterEvaluator(model=model, params=stats.cpsat_params, metric=metric, fixed_params=parameter_space.fixed_parameters, baseline_values=values)
-    selected_params =  be.evaluate()
-    print()
-    print("Explanation of selected parameters:")
-    print(explain_parameters(selected_params.keys()))
-    return selected_params
+    be = ParameterEvaluator(
+        model=model,
+        params=stats.cpsat_params,
+        default_score=metric.convert_to_maximization(objective.get_baseline().mean),
+        metric=metric,
+        fixed_params=parameter_space.fixed_parameters,
+        baseline_values=values,
+    )
+    result = be.evaluate()
+    result.print_results()
+    return result.optimized_params
+
 
 def tune_for_quality_within_timelimit(
     model: cp_model.CpModel,
@@ -137,11 +143,16 @@ def tune_for_quality_within_timelimit(
         max_samples_per_param=max_samples_per_param,
     )
 
-    stats= _tune(objective, parameter_space, n_trials)
+    stats = _tune(objective, parameter_space, n_trials)
     values = [metric.convert_to_maximization(v) for v in stats.values]
-    be = ParameterEvaluator(model=model, params=stats.cpsat_params, metric=metric, fixed_params=parameter_space.fixed_parameters, baseline_values=values)
-    selected_params =  be.evaluate()
-    print()
-    print("Explanation of selected parameters:")
-    print(explain_parameters(selected_params.keys()))
-    return selected_params
+    be = ParameterEvaluator(
+        model=model,
+        params=stats.cpsat_params,
+        default_score=metric.convert_to_maximization(objective.get_baseline().mean),
+        metric=metric,
+        fixed_params=parameter_space.fixed_parameters,
+        baseline_values=values,
+    )
+    result = be.evaluate()
+    result.print_results()
+    return result.optimized_params

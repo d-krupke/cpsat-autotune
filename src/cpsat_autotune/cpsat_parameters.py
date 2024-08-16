@@ -7,6 +7,7 @@ import textwrap
 from typing import Iterable
 
 from .parameters import (
+    CpSatParameter,
     BoolParameter,
     CategoryParameter,
     IntParameter,
@@ -327,6 +328,15 @@ CPSAT_PARAMETERS = [
     ),
 ]
 
+def get_parameter_by_name(name: str) -> CpSatParameter:
+    """
+    Returns the parameter with the given name.
+    """
+    for param in CPSAT_PARAMETERS:
+        if param.name == name:
+            return param
+    raise KeyError(f"Parameter '{name}' not found.")
+
 def explain_parameters(parameters: Iterable[str]) -> str:
     """
     Returns a detailed explanation of the given parameters.
@@ -341,5 +351,5 @@ def explain_parameters(parameters: Iterable[str]) -> str:
                 description = textwrap.dedent(f"""\
                 {param.description}
                 """).strip()
-                explanation += f"\tDescription: {description}\n\n"
+                explanation += f"\tDescription: \n\t\t{description.replace('\n', '\n\t\t').strip()}\n\n"
     return explanation

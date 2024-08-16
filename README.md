@@ -75,96 +75,65 @@ from cpsat_autotune import import_model, tune_time_to_optimal
 model = import_model("models/medium_hg.pb")
 
 # Tune the model to minimize the time to reach an optimal solution
-tune_time_to_optimal(
+best = tune_time_to_optimal(
     model,
-    timelimit_in_s=6,
-    n_samples_per_param=5,
-    max_samples_per_param=10,
-    n_trials=50,
+    timelimit_in_s=6,  # Enter a time limit slightly above what the solver with default parameters needs
+    n_samples_per_param=5,  # The higher the number, the more accurate the tuning, but the longer it takes
+    max_samples_per_param=10,  # After this number of samples for a parameter set, we just take the average from the history
+    n_trials=50,  # Number of trials to run with Optuna
 )
 ```
 
 Sample output:
 
 ```plaintext
+============================================================
+                 OPTIMIZED PARAMETERS
+============================================================
+
+1. max_presolve_iterations: 1
+   Contribution: 9.71%
+   Default Value: 3
+   Description:
+       Sets the maximum number of iterations that the presolve phase will execute.
+               Presolve simplifies the problem by eliminating redundant constraints and variables before the main search begins.
+               More iterations can lead to a more simplified problem but at the cost of longer presolve times.
+
+2. cp_model_probing_level: 0
+   Contribution: 51.99%
+   Default Value: 2
+   Description:
+       Defines the intensity of probing during presolve, where variables are temporarily fixed to infer more information about the problem.
+               Higher levels of probing can result in a more simplified problem but require more computation time during presolve.
+
+3. binary_minimization_algorithm: 2
+   Contribution: 24.42%
+   Default Value: 1
+   Description:
+       Specifies the algorithm used for binary clause minimization during conflict analysis. The options are:
+               - `0` NO_BINARY_MINIMIZATION.
+               - `1` BINARY_MINIMIZATION_FIRST
+               - `2` BINARY_MINIMIZATION_WITH_REACHABILITY
+               - `3` EXPERIMENTAL_BINARY_MINIMIZATION
+               - `4` BINARY_MINIMIZATION_FIRST_WITH_TRANSITIVE_REDUCTION
+
+4. max_all_diff_cut_size: 32
+   Contribution: 13.88%
+   Default Value: 64
+   Description:
+       Limits the size of "all different" constraints used when generating cuts.
+               All-different constraints ensure that a set of variables takes distinct values. This parameter controls the balance between reducing the search space and the computational cost of generating cuts.
 ------------------------------------------------------------
-Parameters:
-	cp_model_probing_level: 1
-	use_lb_relax_lns: True
-	max_presolve_iterations: 1
-	symmetry_level: 0
-	ignore_subsolvers: ('fixed', 'no_lp', 'probing', 'quick_restart_no_lp')
-	linearization_level: 2
-	search_branching: 1
-	randomize_search: True
-	add_objective_cut: True
-	diversify_lns_params: True
-	preferred_variable_order: 1
-	repair_hint: True
-	max_all_diff_cut_size: 32
-	use_erwa_heuristic: True
-Difference to default: 3.2086112
-This is significant: True
+Default Metric Value: 1.5331676
+Optimized Metric Value: 0.544175
 ------------------------------------------------------------
-------------------------------------------------------------
-Parameters:
-	presolve_probing_deterministic_time_limit: 10.0
-	randomize_search: True
-	add_objective_cut: True
-	preferred_variable_order: 2
-	diversify_lns_params: True
-	max_all_diff_cut_size: 128
-	symmetry_level: 0
-Difference to default: 0.39306280000000005
-This is significant: True
-------------------------------------------------------------
-------------------------------------------------------------
-Parameters:
-	presolve_bve_threshold: 100
-	presolve_probing_deterministic_time_limit: 0.1
-	search_branching: 1
-	linearization_level: 2
-	randomize_search: True
-	ignore_subsolvers: ('default_lp', 'probing', 'quick_restart', 'quick_restart_no_lp')
-	fp_rounding: 1
-	max_all_diff_cut_size: 128
-	symmetry_level: 0
-Difference to default: 0.5854168
-This is significant: True
-------------------------------------------------------------
-------------------------------------------------------------
-Parameters:
-	cp_model_probing_level: 1
-	search_branching: 5
-	presolve_bve_threshold: 100
-	use_lb_relax_lns: True
-	cut_level: 0
-	use_objective_lb_search: True
-	max_presolve_iterations: 2
-	ignore_subsolvers: ('default_lp', 'max_lp', 'quick_restart', 'quick_restart_no_lp')
-	diversify_lns_params: True
-	use_erwa_heuristic: True
-	presolve_probing_deterministic_time_limit: 10.0
-Difference to default: 1.3500721999999996
-This is significant: True
-------------------------------------------------------------
-------------------------------------------------------------
-Parameters:
-	cp_model_probing_level: 1
-	use_lb_relax_lns: True
-	symmetry_level: 0
-	search_branching: 1
-	presolve_probing_deterministic_time_limit: 5.0
-	add_objective_cut: True
-	diversify_lns_params: True
-	use_erwa_heuristic: True
-	max_presolve_iterations: 1
-	repair_hint: True
-	ignore_subsolvers: ('fixed', 'no_lp', 'probing', 'pseudo_costs', 'quick_restart_no_lp')
-	cut_level: 0
-Difference to default: 3.0537128
-This is significant: True
-------------------------------------------------------------
+
+============================================================
+*** WARNING ***
+============================================================
+The optimized parameters listed above were obtained based on a sampling approach and may not fully capture the complexities of the entire problem space. While statistical reasoning has been applied, these results should be considered as a suggestion for further evaluation rather than definitive settings.
+It is strongly recommended to validate these parameters in larger, more comprehensive experiments before adopting them in critical applications.
+============================================================
 ```
 
 ## Available Tuning Methods
