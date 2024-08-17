@@ -4,6 +4,8 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.markdown import Markdown
 from rich.rule import Rule
+
+from .metrics import Metric
 from .caching_solver import MultiResult
 
 from .cpsat_parameters import get_parameter_by_name
@@ -13,7 +15,7 @@ console = Console()
 
 
 def print_results(
-    result, default_score: MultiResult, fn: Callable = console.print
+    result, default_score: MultiResult, metric: Metric,  fn: Callable = console.print
 ) -> None:
     """
     Prints the evaluation results in a professional format.
@@ -67,14 +69,14 @@ def print_results(
     metrics_table.add_column("#Samples", justify="right")
 
     metrics_table.add_row(
-        "Default Metric Value",
+        f"{metric.objective_name()} with Default Parameters",
         str(round(default_score.mean(), 2)),
         str(round(default_score.min(), 2)),
         str(round(default_score.max(), 2)),
         str(len(default_score)),
     )
     metrics_table.add_row(
-        "Optimized Metric Value",
+        f"{metric.objective_name()} with Optimized Parameters",
         str(round(result.optimized_score.mean(), 2)),
         str(round(result.optimized_score.min(), 2)),
         str(round(result.optimized_score.max(), 2)),

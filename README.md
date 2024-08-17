@@ -196,6 +196,76 @@ This method tunes hyperparameters to maximize or minimize the objective value wi
 
 - The concrete analysis, including baseline performance and the evaluation of the best parameters, is printed to the console.
 
+## Using the `cpsat-autotune` CLI
+
+The `cpsat-autotune` CLI is a command-line interface for tuning CP-SAT hyperparameters to optimize the performance of your models. Below are the instructions on how to use the CLI.
+
+### Commands
+
+The `cpsat-autotune` CLI provides two main commands: `time` and `quality`.
+
+#### `time` Command
+
+The `time` command tunes CP-SAT hyperparameters to minimize the time required to find an optimal solution.
+
+##### Usage
+
+```sh
+cpsat-autotune time [OPTIONS] MODEL_PATH
+```
+
+##### Options
+
+- `MODEL_PATH`: Path to the model file (required).
+- `--max-time`: Maximum time allowed for each solve operation in seconds (required).
+- `--relative-gap`: Relative optimality gap for considering a solution as optimal (default: 0.0).
+- `--n-trials`: Number of trials to execute in the tuning process (default: 100).
+- `--n-samples-trial`: Number of samples to take in each trial (default: 10).
+- `--n-samples-verification`: Number of samples for verifying parameters (default: 30).
+
+##### Example
+
+```sh
+cpsat-autotune time --max-time 60 --relative-gap 0.01 --n-trials 50 --n-samples-trial 5 --n-samples-verification 20 path/to/model/file
+```
+
+#### `quality` Command
+
+The `quality` command tunes CP-SAT hyperparameters to maximize or minimize solution quality within a given time limit.
+
+##### Usage
+
+```sh
+cpsat-autotune quality [OPTIONS] MODEL_PATH
+```
+
+##### Options
+
+- `MODEL_PATH`: Path to the model file (required).
+- `--max-time`: Time limit for each solve operation in seconds (required).
+- `--obj-for-timeout`: Objective value to return if the solver times out (required).
+- `--direction`: Direction to optimize the objective value (`maximize` or `minimize`, required).
+- `--n-trials`: Number of trials to execute in the tuning process (default: 100).
+- `--n-samples-trial`: Number of samples to take in each trial (default: 10).
+- `--n-samples-verification`: Number of samples for verifying parameters (default: 30).
+
+##### Example
+
+```sh
+cpsat-autotune quality --max-time 60 --obj-for-timeout 100 --direction maximize --n-trials 50 --n-samples-trial 5 --n-samples-verification 20 path/to/model/file
+```
+
+### Help
+
+For more information on each command and its options, you can use the `--help` flag:
+
+```sh
+cpsat-autotune time --help
+cpsat-autotune quality --help
+```
+
+This will display detailed descriptions and usage instructions for each command.
+
 ## The Importance of Avoiding Overfitting
 
 While tuning hyperparameters can improve solver performance for specific

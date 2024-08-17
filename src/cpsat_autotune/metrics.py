@@ -89,6 +89,16 @@ class Metric(ABC):
     def knockout_score(self) -> float:
         pass
 
+    def unit(self) -> str|None:
+        """
+        Returns the unit of the metric.
+        """
+        return None
+    
+    @abstractmethod
+    def objective_name(self) -> str:
+        pass
+
 
 class MaxObjective(Metric):
     """
@@ -130,6 +140,9 @@ class MaxObjective(Metric):
 
     def knockout_score(self) -> float:
         return self.obj_for_timeout
+    
+    def objective_name(self) -> str:
+        return "Objective [MAX]"
 
 
 class MinObjective(Metric):
@@ -168,6 +181,9 @@ class MinObjective(Metric):
 
     def knockout_score(self) -> float:
         return self.obj_for_timeout
+    
+    def objective_name(self) -> str:
+        return "Objective [MIN]"
 
 
 class MinTimeToOptimal(Metric):
@@ -222,3 +238,6 @@ class MinTimeToOptimal(Metric):
 
     def knockout_score(self) -> float:
         return self.max_time_in_seconds * self.par_multiplier
+    
+    def objective_name(self) -> str:
+        return "Time in seconds"

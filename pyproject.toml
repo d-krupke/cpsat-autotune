@@ -7,7 +7,7 @@ where = ["src"]
 
 [project]
 name = "cpsat-autotune"
-version = "0.1.1"
+version = "0.2.0"
 authors = [
     { name = "Dominik Krupke", email = "krupked@gmail.com" },
 ]
@@ -20,5 +20,8 @@ classifiers = [
     "Development Status :: 3 - Alpha",
 ]
 dependencies = [
-    "optuna", "ortools", "numpy", "scipy", "rich"
+    "optuna", "ortools", "numpy", "scipy", "rich", "click"
 ]
+
+[project.scripts]
+cpsat-autotune = "cpsat_autotune.cli:cli"

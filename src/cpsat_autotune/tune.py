@@ -86,7 +86,7 @@ def _tune(
         n_samples_for_trial=n_samples_for_trial,
     )
     result = evaluator.evaluate()
-    print_results(result, default_baseline)
+    print_results(result, default_score=default_baseline, metric=metric)
 
     logger.info("Hyperparameter tuning completed.")
     return best_params
