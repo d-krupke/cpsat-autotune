@@ -4,9 +4,6 @@ file from OR-Tools for more information:
 https://github.com/google/or-tools/blob/stable/ortools/sat/sat_parameters.proto
 """
 
-import textwrap
-from typing import Iterable
-
 from .parameters import (
     CpSatParameter,
     BoolParameter,

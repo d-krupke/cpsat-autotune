@@ -155,40 +155,46 @@ and help the solver find an optimal solution more quickly.
 
 ### 1. `tune_time_to_optimal`
 
-This method tunes the CP-SAT solver's hyperparameters to minimize the time
-required to find an optimal solution. This is useful if you need a guaranteed
-solution without a fixed time limit.
+This method tunes the CP-SAT solver's hyperparameters to minimize the time required to find an optimal solution. It is useful when you need a guaranteed solution without a fixed time limit.
 
 #### Parameters:
 
 - `model`: The CP-SAT model you wish to tune.
-- `timelimit_in_s`: Time limit for each solver operation in seconds.
-- `opt_gap`: (Optional) The relative optimality gap to determine when a solution
-  is considered optimal. Default is `0.0` (exact optimality).
-- `n_samples_per_param`: (Optional) Number of samples per parameter in each
-  trial. Default is `10`.
-- `max_samples_per_param`: (Optional) Maximum number of samples per parameter
-  before using the mean to improve runtime. Default is `30`.
-- `n_trials`: (Optional) Number of trials to run. Default is `100`.
+- `max_time_in_seconds`: The maximum time allowed for each solve operation. This parameter influences the runtime of the tuning process, so it should be set carefully.
+- `relative_gap_limit`: (Optional) The relative optimality gap for considering a solution as optimal. A value of `0.0` requires exact optimality. Defaults to `0.0`.
+- `n_samples_for_trial`: (Optional) The number of samples taken in each trial. Defaults to `10`.
+- `n_samples_for_verification`: (Optional) The number of samples used to verify parameters after tuning. Defaults to `30`.
+- `n_trials`: (Optional) The number of trials to run. Defaults to `100`.
+
+#### Returns:
+
+- `dict`: The best parameters found during the tuning process.
+
+#### Notes:
+
+- The concrete analysis, including baseline performance and the evaluation of the best parameters, is printed to the console.
 
 ### 2. `tune_for_quality_within_timelimit`
 
-This method tunes hyperparameters to maximize or minimize the objective value
-within a specified time limit. This is useful when you need to find a good
-solution within a fixed time frame, but do not require any guarantees.
+This method tunes hyperparameters to maximize or minimize the objective value within a specified time limit. It is useful when you need to find a good solution within a fixed time frame without requiring guarantees.
 
 #### Parameters:
 
 - `model`: The CP-SAT model to be tuned.
-- `timelimit_in_s`: Time limit for each solver operation in seconds.
-- `obj_for_timeout`: Objective value applied if the solver times out.
-- `direction`: Specify 'maximize' or 'minimize' depending on whether you want to
-  optimize for the best or worst solution quality.
-- `n_samples_per_param`: (Optional) Number of samples per parameter in each
-  trial. Default is `10`.
-- `max_samples_per_param`: (Optional) Maximum number of samples per parameter
-  before using the mean to improve runtime. Default is `30`.
-- `n_trials`: (Optional) Number of trials to run. Default is `100`.
+- `max_time_in_seconds`: The time limit for each solve operation in seconds. This value should be less than the time required for the solver to find an optimal solution with default parameters.
+- `obj_for_timeout`: The objective value to return if the solver times out. This value should be worse than a trivial solution.
+- `direction`: Specify `'maximize'` or `'minimize'` depending on whether you want to optimize for the best or worst solution quality.
+- `n_samples_for_trial`: (Optional) The number of samples taken in each trial. Defaults to `10`.
+- `n_samples_for_verification`: (Optional) The number of samples used to verify parameters after tuning. Defaults to `30`.
+- `n_trials`: (Optional) The number of trials to run. Defaults to `100`.
+
+#### Returns:
+
+- `dict`: The best parameters found during the tuning process.
+
+#### Notes:
+
+- The concrete analysis, including baseline performance and the evaluation of the best parameters, is printed to the console.
 
 ## The Importance of Avoiding Overfitting
 
