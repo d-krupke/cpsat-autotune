@@ -176,7 +176,7 @@ The `cpsat-autotune` CLI is a command-line interface for tuning CP-SAT hyperpara
 
 ### Commands
 
-The `cpsat-autotune` CLI provides two main commands: `time` and `quality`.
+The `cpsat-autotune` CLI provides three main commands: `time`, `quality`, and `gap`.
 
 #### `time` Command
 
@@ -229,6 +229,32 @@ cpsat-autotune quality [OPTIONS] MODEL_PATH
 cpsat-autotune quality --max-time 60 --obj-for-timeout 100 --direction maximize --n-trials 50 --n-samples-trial 5 --n-samples-verification 20 path/to/model/file
 ```
 
+#### `gap` Command
+
+Tune CP-SAT hyperparameters to minimize the gap within a given time limit. This is a good
+option for more complex models for which you have no chance of finding the optimal solution
+within the time limit, but you still want to have some guarantee on the quality of the solution.
+This can be considered as a proxy for the time to optimal solution.
+
+CAVEAT: If the time limit is too small, it will probably only minimize the presolve time, which
+can have negative effects on the long-term performance of the solver.
+
+##### Usage
+
+```sh
+cpsat-autotune gap [OPTIONS] MODEL_PATH
+```
+
+##### Options
+
+- `MODEL_PATH`: Path to the model file (required).
+- `--max-time`: Time limit for each solve operation in seconds (required).
+- `--obj-for-timeout`: Objective value to return if the solver times out (required).
+- `--direction`: Direction to optimize the objective value (`maximize` or `minimize`, required).
+- `--n-trials`: Number of trials to execute in the tuning process (default: 100).
+- `--n-samples-trial`: Number of samples to take in each trial (default: 10).
+- `--n-samples-verification`: Number of samples for verifying parameters (default: 30).
+
 ### Help
 
 For more information on each command and its options, you can use the `--help` flag:
@@ -236,6 +262,7 @@ For more information on each command and its options, you can use the `--help` f
 ```sh
 cpsat-autotune time --help
 cpsat-autotune quality --help
+cpsat-autotune gap --help
 ```
 
 This will display detailed descriptions and usage instructions for each command.

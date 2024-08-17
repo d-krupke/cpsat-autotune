@@ -241,3 +241,82 @@ class MinTimeToOptimal(Metric):
     
     def objective_name(self) -> str:
         return "Time in seconds"
+    
+    def unit(self) -> str:
+        return "s"
+
+class MinGapWithinTimelimit(Metric):
+    def __init__(self, max_time_in_seconds: float, limit: float):
+        super().__init__(direction="minimize")
+        self.max_time_in_seconds = max_time_in_seconds
+        self.limit = limit
+
+    def __call__(
+        self,
+        solver: cp_model.CpSolver,
+        model: cp_model.CpModel,
+    ) -> float:
+        solver.parameters.random_seed = random.randint(0, 2**31 - 1)
+        solver.parameters.max_time_in_seconds = self.max_time_in_seconds
+        logger.info(
+            "Starting solver with random_seed: %s, max_time_in_seconds: %s",
+            solver.parameters.random_seed,
+            self.max_time_in_seconds,
+        )
+        status = solver.solve(model)
+        obj_value = None
+        if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+            obj_val = solver.objective_value
+            best_bound = solver.best_objective_bound
+            gap = abs(obj_val - best_bound) / max(1, abs(obj_val))
+            obj_value = solver.objective_value
+            logger.info("Solver found a solution with objective value: %s", obj_value)
+        else:
+            gap = float("inf")
+            logger.warning(
+                "Solver did not find a feasible solution within the time limit."
+            )
+        return min(gap, self.limit)
+    
+    def knockout_score(self) -> float:
+        return self.limit
+    
+    def objective_name(self) -> str:
+        return "Relative gap"
+    
+class MinGapIntegralWithinTimelimit(Metric):
+    def __init__(self, max_time_in_seconds: float, limit: float):
+        super().__init__(direction="minimize")
+        self.max_time_in_seconds = max_time_in_seconds
+        self.limit = limit 
+
+    def __call__(
+        self,
+        solver: cp_model.CpSolver,
+        model: cp_model.CpModel,
+    ) -> float:
+        solver.parameters.random_seed = random.randint(0, 2**31 - 1)
+        solver.parameters.max_time_in_seconds = self.max_time_in_seconds
+        logger.info(
+            "Starting solver with random_seed: %s, max_time_in_seconds: %s",
+            solver.parameters.random_seed,
+            self.max_time_in_seconds,
+        )
+        status = solver.solve(model)
+        obj_value = None
+        if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+            obj_value = solver.objective_value
+            gap_integral = solver.response_proto.gap_integral
+            logger.info("Solver found a solution with objective value: %s", obj_value)
+        else:
+            gap_integral = float("inf")
+            logger.warning(
+                "Solver did not find a feasible solution within the time limit."
+            )
+        return min(self.limit, gap_integral)
+    
+    def knockout_score(self) -> float:
+        return self.limit
+    
+    def objective_name(self) -> str:
+        return "Gap integral"

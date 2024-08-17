@@ -4,7 +4,13 @@ from ortools.sat.python import cp_model
 from .print_result import print_results
 from .caching_solver import CachingScorer, MultiResult
 from .objective import OptunaCpSatStrategy
-from .metrics import Metric, MinObjective, MaxObjective, MinTimeToOptimal
+from .metrics import (
+    Metric,
+    MinObjective,
+    MaxObjective,
+    MinTimeToOptimal,
+    MinGapWithinTimelimit,
+)
 from .parameter_space import CpSatParameterSpace
 from .parameter_evaluator import ParameterEvaluator
 
@@ -211,3 +217,47 @@ def tune_for_quality_within_timelimit(
 
     logger.info("Tuning for quality within time limit completed.")
     return result_params
+
+
+def tune_for_gap_within_timelimit(
+    model: cp_model.CpModel,
+    max_time_in_seconds: float,
+    n_samples_for_trial: int = 10,
+    n_samples_for_verification: int = 30,
+    n_trials: int = 100,
+    limit: float = 10,
+) -> dict:
+    """
+    Tune CP-SAT hyperparameters to minimize the gap within a given time limit. This is a good
+    option for more complex models for which you have no chance of finding the optimal solution
+    within the time limit, but you still want to have some guarantee on the quality of the solution.
+    This can be considered as a proxy for the time to optimal solution.
+
+    CAVEAT: If the time limit is too small, it will probably only minimize the presolve time, which
+    can have negative effects on the long-term performance of the solver.
+
+    Args:
+        model (cp_model.CpModel): The CP-SAT model to be tuned.
+        max_time_in_seconds (float): The time limit for each solve operation in seconds. It should be set
+        to value where the solver with default parameters is able to find a first reasonable but not optimal
+        solution. You can also try to set it to lower values.
+        n_samples_for_trial (int): The number of samples to take in each trial. Defaults to 10.
+        n_samples_for_verification (int): The number of samples for verifying parameters. Defaults to 30.
+        n_trials (int): The number of trials to execute in the tuning process. Defaults to 100.
+        limit (float): The limit for the gap. Defaults to 10. 10 should be a reasonable value for most cases,
+        but if the solver with default parameters is not able to find a solution with that gap within the
+        time limit, you should increase it.
+    """
+    logger.info("Starting tuning for gap within time limit. Limit: %s", limit)
+
+    parameter_space = CpSatParameterSpace()
+    parameter_space.drop_parameter("max_time_in_seconds")
+    metric = MinGapWithinTimelimit(max_time_in_seconds=max_time_in_seconds, limit=limit)
+    return _tune(
+        parameter_space,
+        model,
+        metric,
+        n_samples_for_verification,
+        n_samples_for_trial,
+        n_trials,
+    ).params

@@ -30,10 +30,15 @@ class CpSatParameterSpace:
             return {}
         if isinstance(trial, dict):
             trial = optuna.trial.FixedTrial(trial)
+        assert isinstance(trial, (optuna.Trial, optuna.trial.FixedTrial))
         params = {}
         for parameter in self.tunable_parameters.values():
             value = parameter.sample(trial)
-            if value != parameter.get_cpsat_default():
+            default = parameter.get_cpsat_default()
+            if isinstance(value, (list, tuple)):
+                if set(default) != set(value):
+                    params[parameter.name] = list(value)
+            elif value != default:
                 params[parameter.name] = value
         return params
 
@@ -56,28 +61,3 @@ class CpSatParameterSpace:
             )
             for param_name, optuna_param_value in trial.params.items()
         }
-
-    def get_cpsat_params_diff(
-        self, trial: optuna.trial.FixedTrial | optuna.Trial
-    ) -> dict:
-        """
-        Returns the parameters that are different from the default.
-        """
-        params = {}
-        for param in self.tunable_parameters.values():
-            params.update(param.get_cpsat_params(trial.params))
-        cp_sat_default = frozenset(
-            (param.name, param.get_cpsat_default())
-            for param in self.tunable_parameters.values()
-        )
-        trial_params = frozenset(params.items())
-        diff_params = trial_params - cp_sat_default
-        return {param_name: param_value for param_name, param_value in diff_params}
-
-    def distance_to_default(self, trial: optuna.trial.FixedTrial) -> int:
-        """
-        Returns the number of parameters that are different from the default.
-        This can be useful as we usually want to use as many default values as possible,
-        as they are much better tested.
-        """
-        return len(self.get_cpsat_params_diff(trial))
