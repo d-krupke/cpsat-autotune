@@ -294,6 +294,26 @@ values.
   problems and can tolerate potential performance drops on outliers, use the
   suggested parameters after careful consideration.
 
+## What are the main challenges?
+
+There are a few challenges to make the tuning efficient and effective:
+
+1. CP-SAT can have a very high variance (when using random seeds). This variance
+    can be much higher than for most other use cases of hypterparameter tuning.
+    Currently, we are solving the issue by taking multiple samples for each
+    trial, though, this is not a perfect solution.
+2. CP-SAT has very many hyperparameters and it is not clear which ones are important.
+    Currently, there is a set of hyperparameters we already know are important and
+    and a further set of hyperparameters that we chose based on educated guesses, though,
+    we are already doubting some of these choices.
+3. Identifying which changes are actually significant and worth the risk of deviating
+  from the well-tuned default parameters is a challenge. The current implementation does
+  some analysis but if the chosen strategies are truly effective is still an open question.
+4. Deciding on what the right number of samples for each measurement is is a challenge. We
+  will probably add some more advanced statistical analysis in the future to make this
+  decision more data-driven, instead of having some static rules.
+
+
 ## Contributing
 
 Contributions are welcome. Please ensure that your code adheres to the project's
