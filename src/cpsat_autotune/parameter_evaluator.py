@@ -76,9 +76,13 @@ class ParameterEvaluator:
         containing the results.
         """
         logger.info("Starting evaluation of parameter importance...")
+        default_baseline = self.scorer.evaluate({}, num_runs=self.n_samples_for_verification)
         optuna_baseline = self.scorer.evaluate(
             self.params, num_runs=self.n_samples_for_verification
         )
+        if self.metric.comp(default_baseline.mean(), optuna_baseline.mean()) in (Comparison.BETTER, Comparison.EQUAL):
+            logger.warning("After increasing the number of samples, no advantage was found in the optimized parameters. Discarding the results.")
+            return EvaluationResult(optimized_params={}, contribution={}, optimized_score=default_baseline)
         accept_as_equal = (
             self.metric.worst(optuna_baseline) + optuna_baseline.mean()
         ) / 2
