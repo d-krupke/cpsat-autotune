@@ -88,53 +88,27 @@ Sample output:
 
 ```plaintext
 ────────────────────────────────────────────── OPTIMIZED PARAMETERS ───────────────────────────────────────────────
-┏━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┓
-┃ #   ┃ Parameter                     ┃ Value ┃ Contribution ┃ Default Value ┃
-┡━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━┩
-│ 1   │ binary_minimization_algorithm │   3   │    14.41%    │       1       │
-│ 2   │ cp_model_probing_level        │   1   │    19.12%    │       2       │
-│ 3   │ search_branching              │   7   │    20.91%    │       0       │
-│ 4   │ cut_level                     │   0   │    45.56%    │       1       │
-└─────┴───────────────────────────────┴───────┴──────────────┴───────────────┘
+┏━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┓
+┃ #   ┃ Parameter              ┃ Value ┃ Contribution ┃ Default Value ┃
+┡━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━┩
+│ 1   │ cp_model_probing_level │   0   │    49.51%    │       2       │
+│ 2   │ cut_level              │   0   │    50.49%    │       1       │
+└─────┴────────────────────────┴───────┴──────────────┴───────────────┘
 ────────────────────────────────────────────────── Descriptions ───────────────────────────────────────────────────
-1. binary_minimization_algorithm Specifies the algorithm used for binary clause minimization during conflict
-analysis. The options are:
+1. cp_model_probing_level Defines the intensity of probing during presolve, where variables are temporarily fixed  
+to infer more information about the problem. Higher levels of probing can result in a more simplified problem but  
+require more computation time during presolve.                                                                     
 
- • 0 NO_BINARY_MINIMIZATION.
- • 1 BINARY_MINIMIZATION_FIRST
- • 2 BINARY_MINIMIZATION_WITH_REACHABILITY
- • 3 EXPERIMENTAL_BINARY_MINIMIZATION
- • 4 BINARY_MINIMIZATION_FIRST_WITH_TRANSITIVE_REDUCTION
-
-2. cp_model_probing_level Defines the intensity of probing during presolve, where variables are temporarily fixed
-to infer more information about the problem. Higher levels of probing can result in a more simplified problem but
-require more computation time during presolve.
-
-3. search_branching Defines the branching strategy the solver uses to navigate the search tree. The options are:
-
- • 0 (AUTOMATIC_SEARCH): The solver automatically selects the most appropriate strategy.
- • 1 (FIXED_SEARCH): Follows a fixed variable order, as specified by the user or the problem model.
- • 2 (PORTFOLIO_SEARCH): Uses a combination of multiple strategies to explore the search space.
- • 3 (LP_SEARCH): Branches based on the LP relaxation of the problem, leveraging the reduced costs of variables.
- • 4 (PSEUDO_COST_SEARCH): Branches using pseudo-costs, which are estimates of the impact of branching decisions
-   based on past experiences.
- • 5 (PORTFOLIO_WITH_QUICK_RESTART_SEARCH): Quickly explores different heuristics with low conflict limits, aiming
-   to find a good initial solution.
- • 6 (HINT_SEARCH): Prioritizes decisions based on hints provided by the user or the problem model.
- • 7 (PARTIAL_FIXED_SEARCH): Begins with a fixed strategy, then switches to automatic search for the remaining
-   decisions.
- • 8 (RANDOMIZED_SEARCH): Introduces randomization into branching decisions to diversify the search.
-
-4. cut_level Sets the level of effort the solver will invest in generating cutting planes, which are linear
-constraints added to remove infeasible regions. Properly applied, cuts can significantly reduce the search space
-and help the solver find an optimal solution more quickly.
+2. cut_level Sets the level of effort the solver will invest in generating cutting planes, which are linear        
+constraints added to remove infeasible regions. Properly applied, cuts can significantly reduce the search space   
+and help the solver find an optimal solution more quickly.                                                         
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-┏━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━┳━━━━━━┳━━━━━━┳━━━━━━━━━━┓
-┃ Metric                 ┃ Mean ┃  Min ┃  Max ┃ #Samples ┃
-┡━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━╇━━━━━━╇━━━━━━╇━━━━━━━━━━┩
-│ Default Metric Value   │ 1.68 │ 1.33 │ 2.21 │       20 │
-│ Optimized Metric Value │ 0.76 │ 0.54 │  0.9 │       20 │
-└────────────────────────┴──────┴──────┴──────┴──────────┘
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━┳━━━━━━┳━━━━━━┳━━━━━━━━━━┓
+┃ Metric                                    ┃ Mean ┃  Min ┃  Max ┃ #Samples ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━╇━━━━━━╇━━━━━━╇━━━━━━━━━━┩
+│ Time in seconds with Default Parameters   │ 1.61 │ 1.04 │ 2.34 │       20 │
+│ Time in seconds with Optimized Parameters │ 0.48 │ 0.34 │ 0.84 │       20 │
+└───────────────────────────────────────────┴──────┴──────┴──────┴──────────┘
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 ╭──────────────────────────────────────────────────── WARNING ────────────────────────────────────────────────────╮
 │                                                                                                                 │
