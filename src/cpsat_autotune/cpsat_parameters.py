@@ -333,6 +333,15 @@ Symmetry breaking helps reduce redundant work by avoiding the exploration of equ
 - `2`: Use both presolve and dynamic symmetry breaking during the search.
         """,
     ),
+    IntFromOrderedListParameter(
+        name="num_workers",
+        default_index=0,
+        values=[0, 8, 4],
+        description="""
+Sets the number of workers used to parallelize the search. Usually, more workers lead to faster search times, but at the same time, fewer works can use the CPU and memory more efficiently, leading to a potentially faster search.
+A value of `0` will use the number of available CPU cores.
+""",
+    ),
 ]
 
 
