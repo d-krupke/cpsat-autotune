@@ -4,6 +4,11 @@ file from OR-Tools for more information:
 https://github.com/google/or-tools/blob/stable/ortools/sat/sat_parameters.proto
 """
 
+from cpsat_autotune.model_filter import (
+    AnyOf,
+    has_constraint_no_overlap,
+    has_constraint_no_overlap_2d,
+)
 from .parameters import (
     CpSatParameter,
     BoolParameter,
@@ -341,6 +346,52 @@ Symmetry breaking helps reduce redundant work by avoiding the exploration of equ
 Sets the number of workers used to parallelize the search. Usually, more workers lead to faster search times, but at the same time, fewer works can use the CPU and memory more efficiently, leading to a potentially faster search.
 A value of `0` will use the number of available CPU cores.
 """,
+    ),
+    # ===============================================================
+    # Interval constraints
+    # ===============================================================
+    BoolParameter(
+        name="use_strong_propagation_in_disjunctive",
+        default_value=False,
+        description="""
+            Stronger but more expensive propagation in the disjunctive constraint.
+        """,
+        is_applicable_for=AnyOf(
+            has_constraint_no_overlap, has_constraint_no_overlap_2d
+        ),
+    ),
+    BoolParameter(
+        name="use_area_energetic_reasoning_in_no_overlap_2d",
+        default_value=False,
+        description="""
+            Reinforce the no_overlap_2d constraint with area energetic reasoning.
+        """,
+        is_applicable_for=has_constraint_no_overlap_2d,
+    ),
+    BoolParameter(
+        name="use_energetic_reasoning_in_no_overlap_2d",
+        default_value=False,
+        description="""
+            Reinforce the no_overlap_2d constraint with energetic reasoning.
+        """,
+        is_applicable_for=has_constraint_no_overlap_2d,
+    ),
+    BoolParameter(
+        name="use_timetabling_in_no_overlap_2d",
+        default_value=False,
+        description="""
+            Reinforce the no_overlap_2d constraint with propagators from the cumulative constraints.
+        """,
+        is_applicable_for=has_constraint_no_overlap_2d,
+    ),
+    IntFromOrderedListParameter(
+        name="max_pairs_pairwise_reasoning_in_no_overlap_2d",
+        default_index=0,
+        values=[1_250, 2_500, 5_000],
+        description="""
+            TBD
+        """,
+        is_applicable_for=has_constraint_no_overlap_2d,
     ),
 ]
 

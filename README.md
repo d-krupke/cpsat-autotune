@@ -320,6 +320,10 @@ There are a few challenges to make the tuning efficient and effective:
 Contributions are welcome. Please ensure that your code adheres to the project's
 style guidelines and includes appropriate tests.
 
+## Changelog
+
+* **0.5.0** Added parameters for `no_overlap`. Allowing to filter based on the model's constraints.
+
 ## License
 
 This project is licensed under the MIT License.

@@ -5,8 +5,11 @@ It also provides more types of parameters than Optuna does out of the box, such 
 """
 
 from abc import ABC, abstractmethod
+from ortools.sat.python import cp_model
+from typing import Callable
 import optuna
 
+_for_all_models = lambda model: True
 
 class CpSatParameter(ABC):
     """
@@ -15,7 +18,7 @@ class CpSatParameter(ABC):
     allowing for seamless integration between the two frameworks.
     """
 
-    def __init__(self, name: str, default_value, description: str = ""):
+    def __init__(self, name: str, default_value, description: str = "", is_applicable_for: Callable[[cp_model.CpModel], bool] = _for_all_models):
         """
         Initialize the parameter with a name and default value.
 
@@ -26,6 +29,7 @@ class CpSatParameter(ABC):
         self.name = name
         self._default_value = default_value
         self.description = description
+        self._filter = is_applicable_for
 
     @abstractmethod
     def sample(self, trial: optuna.Trial):
@@ -81,6 +85,14 @@ class CpSatParameter(ABC):
             A dictionary of parameter values formatted for Optuna.
         """
         return {self.name: cpsat_params[self.name]}
+    
+    def is_effective_for(self, model: cp_model.CpModel) -> bool:
+        """
+        Returns true if the parameter could have an effect on solving the model.
+        Will return false if it won't have any effect on solving the model.
+        """
+        return self._filter(model)
+
 
     def __hash__(self) -> int:
         return hash(self.name)
@@ -94,7 +106,7 @@ class BoolParameter(CpSatParameter):
     A CP-SAT parameter representing a boolean (True/False) value.
     """
 
-    def __init__(self, name: str, default_value: bool, description: str = ""):
+    def __init__(self, name: str, default_value: bool, description: str = "", is_applicable_for: Callable[[cp_model.CpModel], bool] = _for_all_models):
         """
         Initialize the boolean parameter with a name and default value.
 
@@ -102,7 +114,7 @@ class BoolParameter(CpSatParameter):
             name: The name of the parameter.
             default_value: The default boolean value for the parameter.
         """
-        super().__init__(name, default_value, description)
+        super().__init__(name, default_value, description, is_applicable_for)
 
     def sample(self, trial: optuna.Trial) -> bool:
         """
@@ -123,7 +135,7 @@ class CategoryParameter(CpSatParameter):
     The order of these values does not have semantic significance.
     """
 
-    def __init__(self, name: str, default_value, values: list, description: str = ""):
+    def __init__(self, name: str, default_value, values: list, description: str = "", is_applicable_for: Callable[[cp_model.CpModel], bool] = _for_all_models):
         """
         Initialize the categorical parameter with a name, default value, and list of possible values.
 
@@ -132,7 +144,7 @@ class CategoryParameter(CpSatParameter):
             default_value: The default value for the parameter.
             values: A list of possible values that the parameter can take.
         """
-        super().__init__(name, default_value, description=description)
+        super().__init__(name, default_value, description=description, is_applicable_for=is_applicable_for)
         if default_value not in values:
             raise ValueError("Default value must be one of the possible values")
         self.values = values
@@ -163,6 +175,7 @@ class IntParameter(CpSatParameter):
         ub: int,
         log: bool,
         description: str = "",
+        is_applicable_for: Callable[[cp_model.CpModel], bool] = _for_all_models
     ):
         """
         Initialize the integer parameter with a name, default value, and range bounds.
@@ -174,7 +187,7 @@ class IntParameter(CpSatParameter):
             ub: The upper bound of the integer range.
             log: Whether to sample the value on a logarithmic scale.
         """
-        super().__init__(name, default_value, description=description)
+        super().__init__(name, default_value, description=description, is_applicable_for=is_applicable_for)
         self.lower_bound = lb
         self.upper_bound = ub
         self.log = log
@@ -201,7 +214,7 @@ class ListParameter(CpSatParameter):
     """
 
     def __init__(
-        self, name: str, default_value: list, values: list, description: str = ""
+        self, name: str, default_value: list, values: list, description: str = "", is_applicable_for: Callable[[cp_model.CpModel], bool] = _for_all_models
     ):
         """
         Initialize the list parameter with a name, default subset, and list of possible values.
@@ -211,7 +224,7 @@ class ListParameter(CpSatParameter):
             default_value: The default subset of values.
             values: The complete list of possible values from which a subset can be selected.
         """
-        super().__init__(name, tuple(sorted(default_value)), description=description)
+        super().__init__(name, tuple(sorted(default_value)), description=description, is_applicable_for=is_applicable_for)
         self.values = values
 
     def sample(self, trial: optuna.Trial) -> list:
@@ -289,7 +302,7 @@ class IntFromOrderedListParameter(CpSatParameter):
     """
 
     def __init__(
-        self, name: str, default_index: int, values: list, description: str = ""
+        self, name: str, default_index: int, values: list, description: str = "", is_applicable_for: Callable[[cp_model.CpModel], bool] = _for_all_models
     ):
         """
         Initialize the parameter with a name, default index, and ordered list of possible values.
@@ -299,7 +312,7 @@ class IntFromOrderedListParameter(CpSatParameter):
             default_index: The index of the default value in the list of possible values.
             values: The ordered list of possible values.
         """
-        super().__init__(name, default_index, description=description)
+        super().__init__(name, default_index, description=description, is_applicable_for=is_applicable_for)
         self.values = values
 
     def sample(self, trial: optuna.Trial):

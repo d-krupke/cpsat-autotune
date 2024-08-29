@@ -1,5 +1,8 @@
+import logging
+from typing import Iterable
+from ortools.sat.python import cp_model
 import optuna
-from .cpsat_parameters import CPSAT_PARAMETERS
+from .cpsat_parameters import CPSAT_PARAMETERS, CpSatParameter
 
 
 class CpSatParameterSpace:
@@ -18,6 +21,23 @@ class CpSatParameterSpace:
         Will remove a parameter from the parameter space.
         """
         self.tunable_parameters.pop(parameter, None)
+
+    def filter_applicable_parameters(self, models: Iterable[cp_model.CpModel]):
+        """
+        Filters the parameter space to only include parameters that are applicable to the given models.
+
+        This method iterates over the tunable parameters and removes those that are not effective 
+        for any of the provided models.
+
+        Args:
+            models (Iterable[cp_model.CpModel]): An iterable of CP-SAT models to check parameter applicability against.
+        """
+        params = list(self.tunable_parameters.values())
+        for param in params:
+            param: CpSatParameter
+            if not any(param.is_effective_for(model) for model in models):
+                logging.info("Dropping parameter `%s` as it is not effective for any of the provided models.", param.name)
+                self.drop_parameter(param.name)
 
     def sample(
         self,

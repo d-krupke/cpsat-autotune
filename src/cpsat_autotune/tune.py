@@ -130,6 +130,7 @@ def tune_time_to_optimal(
     parameter_space = CpSatParameterSpace()
     parameter_space.drop_parameter("use_lns_only")  # Not useful for this metric
     parameter_space.drop_parameter("max_time_in_seconds")
+    parameter_space.filter_applicable_parameters([model])
 
     if relative_gap_limit > 0.0:
         parameter_space.drop_parameter("relative_gap_tolerance")
@@ -189,7 +190,7 @@ def tune_for_quality_within_timelimit(
 
     parameter_space = CpSatParameterSpace()
     parameter_space.drop_parameter("max_time_in_seconds")
-
+    parameter_space.filter_applicable_parameters([model])
     if direction == "maximize":
         metric = MaxObjective(
             obj_for_timeout=obj_for_timeout, max_time_in_seconds=max_time_in_seconds
@@ -252,6 +253,7 @@ def tune_for_gap_within_timelimit(
 
     parameter_space = CpSatParameterSpace()
     parameter_space.drop_parameter("max_time_in_seconds")
+    parameter_space.filter_applicable_parameters([model])
     metric = MinGapWithinTimelimit(max_time_in_seconds=max_time_in_seconds, limit=limit)
     return _tune(
         parameter_space,
