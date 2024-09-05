@@ -2,7 +2,10 @@ import logging
 from dataclasses import dataclass
 import numpy as np
 from ortools.sat.python import cp_model
+
+from cpsat_autotune.cpsat_parameters import get_parameter_by_name
 from .metrics import Comparison, Metric
+from ortools.sat import sat_parameters_pb2
 
 # Configure logging
 logging.basicConfig(
@@ -106,16 +109,30 @@ class CachingScorer:
         self, params: dict[str, float | int | bool | list | tuple]
     ) -> cp_model.CpSolver:
         solver = cp_model.CpSolver()
+        subsolver = sat_parameters_pb2.SatParameters()
+        subsolver.name = "tuned_solver"
+        has_subsolver_params = False
         for key, value in params.items():
+            is_subsolver_param = get_parameter_by_name(key).subsolver
+            level = subsolver if is_subsolver_param else solver.parameters
+            if is_subsolver_param:
+                has_subsolver_params = True
             if isinstance(value, (list, tuple)):
-                getattr(solver.parameters, key).extend(value)
+                getattr(level, key).extend(value)
             else:
-                setattr(solver.parameters, key, value)
+                setattr(level, key, value)
         for key, value in self.fixed_params.items():
+            is_subsolver_param = get_parameter_by_name(key).subsolver
+            level = subsolver if is_subsolver_param else solver.parameters
+            if is_subsolver_param:
+                has_subsolver_params = True
             if isinstance(value, (list, tuple)):
-                getattr(solver.parameters, key).extend(value)
+                getattr(level, key).extend(value)
             else:
-                setattr(solver.parameters, key, value)
+                setattr(level, key, value)
+        if has_subsolver_params:
+            solver.parameters.subsolver_params.append(subsolver)
+            solver.parameters.extra_subsolvers.append(subsolver.name)
         logging.debug("Solver prepared with params: %s", params)
         return solver
 

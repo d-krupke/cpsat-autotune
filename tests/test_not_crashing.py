@@ -3,6 +3,7 @@ import random
 from ortools.sat.python import cp_model
 from cpsat_autotune import tune_time_to_optimal
 
+
 def build_model() -> cp_model.CpModel:
     num_items = 100
     ratio = 0.35
@@ -20,8 +21,14 @@ def build_model() -> cp_model.CpModel:
     return model
 
 
-
 def test_tuning():
     model = build_model()
-    result = tune_time_to_optimal(model, max_time_in_seconds=0.1, relative_gap_limit=0.01, n_samples_for_trial=3, n_samples_for_verification=5, n_trials=20)
+    result = tune_time_to_optimal(
+        model,
+        max_time_in_seconds=0.1,
+        relative_gap_limit=0.01,
+        n_samples_for_trial=3,
+        n_samples_for_verification=5,
+        n_trials=20,
+    )
     assert result is not None

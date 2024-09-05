@@ -4,6 +4,7 @@ from .metrics import Comparison
 from .caching_solver import CachingScorer, MultiResult
 from .parameter_space import CpSatParameterSpace
 import optuna
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,  # Set the log level to INFO (can be adjusted to DEBUG for more verbosity)
@@ -57,8 +58,13 @@ class OptunaCpSatStrategy:
             knockout_score=knockout_score,
         )
         current_best = self.metric.best(self.scorer, key=lambda x: x.mean())
-        if self.metric.comp(score.mean(), current_best.mean()) in (Comparison.BETTER, Comparison.EQUAL):
-            logger.info("The trial yielded the best result so far, increasing the number of samples to be sure.")
+        if self.metric.comp(score.mean(), current_best.mean()) in (
+            Comparison.BETTER,
+            Comparison.EQUAL,
+        ):
+            logger.info(
+                "The trial yielded the best result so far, increasing the number of samples to be sure."
+            )
             score = self.scorer.evaluate(
                 sampled_params,
                 num_runs=self.n_samples_for_verification,

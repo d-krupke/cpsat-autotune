@@ -89,12 +89,12 @@ class Metric(ABC):
     def knockout_score(self) -> float:
         pass
 
-    def unit(self) -> str|None:
+    def unit(self) -> str | None:
         """
         Returns the unit of the metric.
         """
         return None
-    
+
     @abstractmethod
     def objective_name(self) -> str:
         pass
@@ -140,7 +140,7 @@ class MaxObjective(Metric):
 
     def knockout_score(self) -> float:
         return self.obj_for_timeout
-    
+
     def objective_name(self) -> str:
         return "Objective [MAX]"
 
@@ -181,7 +181,7 @@ class MinObjective(Metric):
 
     def knockout_score(self) -> float:
         return self.obj_for_timeout
-    
+
     def objective_name(self) -> str:
         return "Objective [MIN]"
 
@@ -238,12 +238,13 @@ class MinTimeToOptimal(Metric):
 
     def knockout_score(self) -> float:
         return self.max_time_in_seconds * self.par_multiplier
-    
+
     def objective_name(self) -> str:
         return "Time in seconds"
-    
+
     def unit(self) -> str:
         return "s"
+
 
 class MinGapWithinTimelimit(Metric):
     def __init__(self, max_time_in_seconds: float, limit: float):
@@ -277,18 +278,19 @@ class MinGapWithinTimelimit(Metric):
                 "Solver did not find a feasible solution within the time limit."
             )
         return min(gap, self.limit)
-    
+
     def knockout_score(self) -> float:
         return self.limit
-    
+
     def objective_name(self) -> str:
         return "Relative gap"
-    
+
+
 class MinGapIntegralWithinTimelimit(Metric):
     def __init__(self, max_time_in_seconds: float, limit: float):
         super().__init__(direction="minimize")
         self.max_time_in_seconds = max_time_in_seconds
-        self.limit = limit 
+        self.limit = limit
 
     def __call__(
         self,
@@ -314,9 +316,9 @@ class MinGapIntegralWithinTimelimit(Metric):
                 "Solver did not find a feasible solution within the time limit."
             )
         return min(self.limit, gap_integral)
-    
+
     def knockout_score(self) -> float:
         return self.limit
-    
+
     def objective_name(self) -> str:
         return "Gap integral"

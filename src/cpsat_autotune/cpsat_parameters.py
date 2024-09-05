@@ -8,13 +8,13 @@ from cpsat_autotune.model_filter import (
     AnyOf,
     has_constraint_no_overlap,
     has_constraint_no_overlap_2d,
+    has_objective,
 )
 from .parameters import (
     CpSatParameter,
     BoolParameter,
     CategoryParameter,
     IntParameter,
-    ListParameter,
     IntFromOrderedListParameter,
 )
 
@@ -100,6 +100,7 @@ Specifies the level of protection against clause cleanup. The options are:
 Determines the threshold for Bounded Variable Elimination (BVE) during presolve.
 BVE eliminates variables that can be easily solved based on their limited impact. Lower thresholds speed up presolve but may result in less thorough simplification of the problem.
         """,
+        subsolver=False,  # Presolve is done before the search
     ),
     IntFromOrderedListParameter(
         name="max_presolve_iterations",
@@ -110,6 +111,7 @@ Sets the maximum number of iterations that the presolve phase will execute.
 Presolve simplifies the problem by eliminating redundant constraints and variables before the main search begins.
 More iterations can lead to a more simplified problem but at the cost of longer presolve times.
         """,
+        subsolver=False,  # Presolve is done before the search
     ),
     IntFromOrderedListParameter(
         name="cp_model_probing_level",
@@ -119,6 +121,7 @@ More iterations can lead to a more simplified problem but at the cost of longer 
 Defines the intensity of probing during presolve, where variables are temporarily fixed to infer more information about the problem.
 Higher levels of probing can result in a more simplified problem but require more computation time during presolve.
         """,
+        subsolver=False,  # Presolve is done before the search
     ),
     IntFromOrderedListParameter(
         name="presolve_probing_deterministic_time_limit",
@@ -128,6 +131,7 @@ Higher levels of probing can result in a more simplified problem but require mor
 Sets a deterministic time limit for probing during presolve.
 This parameter ensures that the presolve phase does not consume too much time, allowing the solver to proceed to the main search phase in a timely manner.
         """,
+        subsolver=False,  # Presolve is done before the search
     ),
     BoolParameter(
         "encode_complex_linear_constraint_with_integer",
@@ -136,43 +140,43 @@ This parameter ensures that the presolve phase does not consume too much time, a
 Introduces a slack variable with a domain equal to the right hand side for complex linear constraints.
 https://github.com/google/or-tools/blob/2c333f58a37d7c75d29a58fd772c9b3f94e2ca1c/ortools/sat/cp_model_expand.cc#L1872
         """,
+        subsolver=False,  # Presolve is done before the search
     ),
     # ===============================================================
     # Multithread
     # ===============================================================
-    ListParameter(
-        name="ignore_subsolvers",
-        default_value=[],
-        values=[
-            "default_lp",
-            "fixed",
-            "no_lp",
-            "max_lp",
-            "pseudo_costs",
-            "reduced_costs",
-            "quick_restart",
-            "quick_restart_no_lp",
-            "lb_tree_search",
-            "probing",
-        ],
-        description="""
-Specifies a list of subsolvers to exclude from use during the search.
-Removing certain subsolvers can free up resources and potentially speed up the search. However, excluding subsolvers can be risky as it might eliminate strategies that are useful for solving difficult instances.
-
-From the OR-Tools documentation:
-
-- `default_lp`           (linearization_level:1)
-- `fixed`                (only if fixed search specified or scheduling)
-- `no_lp`                (linearization_level:0)
-- `max_lp`               (linearization_level:2)
-- `pseudo_costs`         (only if objective, change search heuristic)
-- `reduced_costs`        (only if objective, change search heuristic)
-- `quick_restart`        (kind of probing)
-- `quick_restart_no_lp`  (kind of probing with linearization_level:0)
-- `lb_tree_search`       (to improve lower bound, MIP like tree search)
-- `probing`              (continuous probing and shaving)
-        """,
-    ),
+    #     ListParameter(
+    #         name="ignore_subsolvers",
+    #         default_value=[],
+    #         values=[
+    #             "default_lp",
+    #             "fixed",
+    #             "no_lp",
+    #             "max_lp",
+    #             "pseudo_costs",
+    #             "reduced_costs",
+    #             "quick_restart",
+    #             "quick_restart_no_lp",
+    #             "lb_tree_search",
+    #             "probing",
+    #         ],
+    #         subsolver=False,
+    #         description="""
+    # Specifies a list of subsolvers to exclude from use during the search.
+    # Removing certain subsolvers can free up resources and potentially speed up the search. However, excluding subsolvers can be risky as it might eliminate strategies that are useful for solving difficult instances.
+    # From the OR-Tools documentation:
+    # - `default_lp`           (linearization_level:1)
+    # - `fixed`                (only if fixed search specified or scheduling)
+    # - `no_lp`                (linearization_level:0)
+    # - `max_lp`               (linearization_level:2)
+    # - `pseudo_costs`         (only if objective, change search heuristic)
+    # - `reduced_costs`        (only if objective, change search heuristic)
+    # - `quick_restart`        (kind of probing)
+    # - `quick_restart_no_lp`  (kind of probing with linearization_level:0)
+    # - `lb_tree_search`       (to improve lower bound, MIP like tree search)
+    # - `probing`              (continuous probing and shaving)
+    #         """,
+    #     ),
     # ===============================================================
     # Constraint programming parameters
     # ===============================================================
@@ -193,6 +197,7 @@ Defines the branching strategy the solver uses to navigate the search tree. The 
 - `7` (PARTIAL_FIXED_SEARCH): Begins with a fixed strategy, then switches to automatic search for the remaining decisions.
 - `8` (RANDOMIZED_SEARCH): Introduces randomization into branching decisions to diversify the search.
         """,
+        is_applicable_for=has_objective,
     ),
     BoolParameter(
         name="repair_hint",
@@ -209,6 +214,7 @@ This can be useful when a good initial guess is available, helping the solver fi
 When enabled, the solver uses only Large Neighborhood Search (LNS) heuristics, without performing a full global search.
 LNS is beneficial in scenarios where finding improvements quickly is more important than exploring all possibilities for an optimal solution.
         """,
+        subsolver=False,  # This is a top-level parameter
     ),
     BoolParameter(
         name="use_lb_relax_lns",
@@ -226,6 +232,7 @@ This method can help the solver explore the solution space more effectively by f
 Guides the solver to start its search by focusing on improving the lower bound of the objective value.
 This approach can help direct the solver toward the most promising regions of the solution space, especially when minimizing the objective.
         """,
+        is_applicable_for=has_objective,
     ),
     BoolParameter(
         name="use_objective_shaving_search",
@@ -234,6 +241,7 @@ This approach can help direct the solver toward the most promising regions of th
 Activates a search strategy that aggressively restricts the objective value range, effectively reducing the search space.
 This is useful in problems with tight constraints, where such focused searches can lead to faster identification of optimal solutions.
         """,
+        is_applicable_for=has_objective,
     ),
     BoolParameter(
         name="optimize_with_core",
@@ -241,6 +249,7 @@ This is useful in problems with tight constraints, where such focused searches c
         description="""
 Use a core-based approach when trying to improve the bound.
         """,
+        is_applicable_for=has_objective,
     ),
     IntParameter(
         name="feasibility_jump_linearization_level",
@@ -251,6 +260,7 @@ Use a core-based approach when trying to improve the bound.
         description="""
         Linearization level for feasibility jump.
         """,
+        subsolver=False,
     ),
     CategoryParameter(
         name="fp_rounding",
@@ -264,14 +274,7 @@ Specifies the rounding method used in the feasibility pump, a heuristic for quic
 - `2` (PROPAGATION_ASSISTED): Rounds with consideration of bound propagation, improving solution quality by integrating more logical deductions.
 - `3` (ACTIVE_LOCK_BASED): Similar to lock-based rounding, but focuses on active constraints from the last LP solve.
         """,
-    ),
-    BoolParameter(
-        name="diversify_lns_params",
-        default_value=False,
-        description="""
-Enables the use of varied parameter settings for Large Neighborhood Search (LNS).
-By diversifying these parameters, the solver can explore different areas of the solution space more effectively, increasing the likelihood of finding better solutions.
-        """,
+        subsolver=False,
     ),
     BoolParameter(
         name="polish_lp_solution",
@@ -304,6 +307,7 @@ Increasing the linearization level can tighten the relaxation, but it also incre
 Controls whether to add cuts based on the fractional objective value to the model.
 These cuts, when enabled, help narrow down the feasible region of the problem, potentially speeding up convergence to an optimal solution by eliminating non-promising areas.
         """,
+        is_applicable_for=has_objective,
     ),
     IntParameter(
         name="cut_level",
@@ -346,6 +350,7 @@ Symmetry breaking helps reduce redundant work by avoiding the exploration of equ
 Sets the number of workers used to parallelize the search. Usually, more workers lead to faster search times, but at the same time, fewer works can use the CPU and memory more efficiently, leading to a potentially faster search.
 A value of `0` will use the number of available CPU cores.
 """,
+        subsolver=False,
     ),
     # ===============================================================
     # Interval constraints

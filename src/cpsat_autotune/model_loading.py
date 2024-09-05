@@ -27,6 +27,7 @@ def import_model(filepath: Path | str) -> cp_model.CpModel:
 
     return model
 
+
 def export_model(model: cp_model.CpModel, filename: str):
     with open(filename, "w") as file:
         file.write(text_format.MessageToString(model.Proto()))

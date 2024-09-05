@@ -58,7 +58,7 @@ repos:
     hooks:
       - id: ruff
         types_or: [python, pyi, jupyter]
-        #args: [--fix,--ignore, T201, --ignore, E402]
+        args: [--fix, --ignore, T201, --ignore, E402]
       - id: ruff-format
         types_or: [python, pyi, jupyter]
 

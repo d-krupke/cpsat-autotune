@@ -15,7 +15,7 @@ console = Console()
 
 
 def print_results(
-    result, default_score: MultiResult, metric: Metric,  fn: Callable = console.print
+    result, default_score: MultiResult, metric: Metric, fn: Callable = console.print
 ) -> None:
     """
     Prints the evaluation results in a professional format.
